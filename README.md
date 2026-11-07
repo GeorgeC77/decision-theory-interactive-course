@@ -1,5 +1,13 @@
 # 决策理论与方法 · 第一至六章教学包
 
+## 公开课程网站
+
+学生入口：<https://georgec77.github.io/decision-theory-interactive-course/>
+
+GitHub Pages 发布 `gh-pages` 分支根目录，内容来自 `main` 分支的 `course-site/dist`。课程网页、六章演示与 PDF 可直接访问；下文的旧 Sites 链接仍是原有教师预览地址，其访问权限不影响 GitHub Pages。
+
+更新课程后，先提交并推送 `main`，再在仓库根目录运行 `powershell -ExecutionPolicy Bypass -File scripts/publish_github_pages.ps1`。该脚本只把静态课程目录发布到 `gh-pages`，GitHub 随后自动部署。
+
 面向大三经管类，课程前六章共32学时。已完成门户、第一章（2学时）、第二章（4学时）、第三章（8学时）、第四章（2学时）、第五章（8学时）与第六章（8学时）；六章内容现已齐全。
 
 ## 第五章交付物
