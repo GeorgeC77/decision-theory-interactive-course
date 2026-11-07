@@ -1,0 +1,22 @@
+# Local environments, editor state and credentials
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env_Online_Lecture/
+env_Online_lecture/
+.vscode/
+.codex/
+.agents/
+.aws/
+**/.openai/
+**/node_modules/
+**/__pycache__/
+*.py[cod]
+*.log
+
+# Temporary reviews, archives and the supplied source textbook
+/tmp/
+/output/*.zip
+/决策理论与方法教材（第三版）.pdf
