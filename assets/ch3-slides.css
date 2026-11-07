@@ -1,0 +1,3 @@
+.chart-layout{display:grid;grid-template-columns:64% 33%;gap:3%;align-items:start}.chart-layout svg{width:100%;height:auto;overflow:visible}.chart-layout svg text{font-family:"Microsoft YaHei",sans-serif;font-size:17px;fill:#586a7c}.chart-layout h3{font-size:1.9cqw;margin:2cqw 0 .8cqw}.chart-layout p{font-size:1.7cqw}.chart-layout .chart-legend{font-size:1.4cqw;font-weight:bold;margin-bottom:.5cqw}.slide.chart .slide-body{top:30%}.slide.appendix .equations p{font-size:1.9cqw}.slide.appendix .equations article{margin-bottom:2cqw}
+
+.decision-diagram{width:100%;height:100%}.tree .slide-body{top:30%;height:49%}
