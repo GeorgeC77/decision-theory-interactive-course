@@ -3,6 +3,7 @@ Run with the project's env_Online_Lecture Python. No textbook raster pages are c
 """
 from pathlib import Path
 from chapter02_charts import draw_chart, chart_html, pdf_math
+from chapter02_figures import draw_figure, figure_html
 import json, html, shutil, math
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -151,6 +152,31 @@ def render_equations(s):
         para(first,70,y+51,1135,25,INK,maxh=50)
         para(second,70,y+98,1135,25,INK,maxh=50)
 
+def render_equipment_intro(s):
+    # Crop only the lower cabinet illustration; keep both machines and worktops visible.
+    c.saveState()
+    clip=c.beginPath();clip.rect(70,H-457,1140,250);c.clipPath(clip,stroke=0)
+    c.drawImage(str(SITE/'assets'/s['image']),70,H-207-1140*749/2098,1140,1140*749/2098,mask='auto')
+    c.restoreState()
+    for i,(label,body) in enumerate(s['items']):
+        x=70+i*590
+        para(label,x,470,540,27,BLUE,True,maxh=42)
+        para(body.replace('\n','；'),x,512,540,22,INK,maxh=70,leading=29)
+
+def render_cashflow_table(s):
+    values=s['cashflows'];cw=1140/8
+    for row,data in enumerate([['时点 t']+list(range(7)),['净现金流']+values]):
+        y=232+row*54
+        for col,value in enumerate(data):
+            x=70+col*cw
+            if row==0:rect(x,y,cw,54,PALE)
+            para(str(value),x+9,y+13,cw-18,21,BLUE if row==0 else INK,bold=row==0,maxh=35)
+            line(x,y+54,x+cw,y+54)
+    for i,(label,body) in enumerate(s['items']):
+        x=70+i*590
+        para(label,x,382,540,27,BLUE,True,maxh=46)
+        para(body,x,437,540,23,INK,maxh=100)
+
 for n,s in enumerate(SLIDES,1):
     c.bookmarkPage(f'slide-{n}');c.addOutlineEntry(s['title'],f'slide-{n}',0)
     if s['type']=='cover':
@@ -174,6 +200,9 @@ for n,s in enumerate(SLIDES,1):
         elif typ=='car':render_car(s)
         elif typ=='equations':render_equations(s)
         elif typ=='chart':draw_chart(s,c,para,line,H)
+        elif typ=='figure':draw_figure(s,c,H)
+        elif typ=='equipment_intro':render_equipment_intro(s)
+        elif typ=='cashflow_table':render_cashflow_table(s)
         else:raise ValueError(typ)
     checks.append({'page':n,'title':s['title'],'layout':'passed'})
     c.showPage()
@@ -184,6 +213,9 @@ shutil.copyfile(PDF,SITE/'downloads/chapter-02.pdf')
 def esc(s):return html.escape(str(s)).replace('\n','<br>')
 def html_body(s):
     t=s['type']
+    if t=='figure':return figure_html(s)
+    if t=='equipment_intro':return '<div class="equipment-intro"><img src="../assets/'+s['image']+'" alt="小型单头咖啡机与较大双头咖啡机的设备规模对比示意"><div class="equipment-copy">'+''.join('<article><h3>'+esc(a)+'</h3><p>'+esc(b).replace('<br>','；')+'</p></article>' for a,b in s['items'])+'</div></div>'
+    if t=='cashflow_table':return '<table class="cashflow-table"><thead><tr><th>时点 t</th>'+''.join('<th>'+str(i)+'</th>' for i in range(7))+'</tr></thead><tbody><tr><th>净现金流</th>'+''.join('<td>'+str(v)+'</td>' for v in s['cashflows'])+'</tr></tbody></table><div class="cashflow-explanations">'+''.join('<article><h3>'+esc(a)+'</h3><p>'+esc(b)+'</p></article>' for a,b in s['items'])+'</div>'
     if t=='chart':return chart_html(s)
     if t=='cover':return '<div class="cover-copy"><p>决策理论与方法</p><p class="gold">第二章</p><h1>确定型<br>决策分析</h1><p>现金流如何比较？<br>多投的钱是否值得？</p><p class="cover-meta">大三经管类 · 4 学时</p></div>'
     if t=='table':return '<table><thead><tr>'+''.join('<th>'+esc(x)+'</th>'for x in s['headers'])+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+esc(x)+'</td>'for x in row)+'</tr>'for row in s['rows'])+'</tbody></table>'
@@ -203,6 +235,7 @@ for i,s in enumerate(SLIDES,1):
     slides_html+=f'<section class="{classes}" data-slide="{i}" aria-label="第 {i} 页：{html.escape(s["title"])}">'+top+'<div class="slide-body">'+html_body(s)+'</div>'+takeaway+foot+'</section>'
 
 page='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>第二章 · 教学演示</title><link rel="stylesheet" href="../assets/slides.css"><link rel="stylesheet" href="../assets/ch2-slides.css"></head><body><header class="deck-toolbar"><a href="index.html">← 第二章学习</a><div><button id="prev">上一页</button><span id="page-counter" aria-live="polite"></span><button id="next">下一页</button></div><div><button id="notes-button" aria-expanded="false">讲稿</button><button id="fullscreen">全屏</button><a href="../downloads/chapter-02.pdf">PDF ↗</a></div></header><main id="deck" data-chapter="第二章">'''+slides_html+'''</main><aside id="speaker-notes" hidden></aside><p class="keyboard-hint">← → 翻页 · Home / End 首尾页 · F 全屏 · N 讲稿</p><script id="notes-data" type="application/json">'''+json.dumps([s['notes']for s in SLIDES],ensure_ascii=False).replace('</','<\/')+'''</script><script src="../assets/slides.js?v=20260919-1"></script></body></html>'''
+page=page.replace('../assets/ch2-slides.css"','../assets/ch2-slides.css?v=20261111-1"')
 (SITE/'ch2/slides.html').write_text(page,encoding='utf-8')
 (ROOT/'tmp/ch2-pdf-layout-checks.json').write_text(json.dumps(checks,ensure_ascii=False,indent=2),encoding='utf-8')
 print(f'Built {len(SLIDES)} slides: {PDF}')
