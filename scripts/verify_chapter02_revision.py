@@ -24,7 +24,7 @@ assert 'Σ[CFₜ/(1+i)ᵗ]' in slides[18]['lead']
 page=(R/'course-site/dist/ch2/slides.html').read_text(encoding='utf-8')
 notes=json.loads(re.search(r'<script id="notes-data" type="application/json">(.*?)</script>',page,re.S).group(1))
 assert notes==[s['notes'] for s in slides]
-assert 'ch2-slides.css?v=20261111-1' in page
+assert 'ch2-slides.css?v=20261111-2' in page
 assert (R/'course-site/dist/assets/ch2-equipment-comparison.png').exists()
 class SvgCheck(HTMLParser):
     count=0
@@ -39,6 +39,10 @@ out=R/'output/pdf/第二章-确定型决策分析.pdf'
 assert pdf.read_bytes()==out.read_bytes()
 doc=fitz.open(pdf);assert len(doc)==47
 assert '13.58%' in doc[21].get_text()
+assert all(term in doc[31].get_text() for term in ['税前现金节约','年折旧','所得税率40%','折旧不直接付现'])
+assert '教材按NPVR' in doc[33].get_text() and '初选并调整' in doc[33].get_text()
+assert '年末净现金流' in doc[28].get_text()
+assert '仅期初一笔投资' in doc[40].get_text()
 issues=[]
 for i,pg in enumerate(doc):
     assert pg.get_text().strip(),i+1

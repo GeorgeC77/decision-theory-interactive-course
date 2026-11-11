@@ -109,16 +109,19 @@ def growth(sc):
     X, Y = axes(sc, 80, 65, 640, 220, (0,5), (0,180),
                 [(i,str(i)) for i in range(6)], [(i,str(i)) for i in [0,50,100,150]],
                 '年末 t / 年', '本利和 / 万元')
-    sc.polyline([(X(t/20),Y(100*pow(1.1,t/20))) for t in range(101)], NAVY, 4)
+    annual_values = [(t,100*pow(1.1,t)) for t in range(6)]
+    sc.polyline([(X(t),Y(value)) for t,value in annual_values], NAVY, 4)
     sc.line(X(2), Y(0), X(2), Y(121), GOLD, 2, [6,5])
-    for t, value, label, dx in [(0,100,'100',14),(2,121,'121',12),(5,161.051,'161.05',-90)]:
+    for t,value in annual_values:
         sc.point(X(t),Y(value),GOLD if t==2 else NAVY)
+    for t, value, label, dx in [(0,100,'100',14),(2,121,'121',12),(5,161.051,'161.05',-90)]:
         sc.text(X(t)+dx,Y(value)-15,label,25,GOLD if t==2 else NAVY,True)
     sc.text(810,75,'本金 100 万元',26,NAVY,True)
     sc.text(810,116,'年利率 10%，按年复利',23)
     sc.text(810,178,'第 2 年：100 × 1.1 × 1.1',22)
     sc.text(810,218,'= 121 万元',30,GOLD,True)
     sc.text(810,285,'第 5 年约为 161.05 万元',22,MUTED)
+    sc.text(810,325,'整数年末取值；连线仅示趋势',20,MUTED)
 
 
 def contribution(sc):
@@ -225,10 +228,13 @@ def budget(sc):
     amounts={'A':200,'B':120,'C':40,'D':90,'E':130,'F':360,'H':150}
     colors={'A':NAVY,'B':GOLD,'C':GREEN,'D':GOLD,'E':GREEN,'F':GOLD,'H':RED}
     sc.text(190,25,'投资构成 / 万元；每组总投资均为 600 万元',23,NAVY,True)
-    rows=[('NPV 排序','AFC',189.8),('教材组合','ABHDC',258.5),('枚举最优','ABEH',259.6)]
+    rows=[('NPV 排序','AFC',189.8),('教材按NPVR\n初选并调整','ABHDC',258.5),('枚举最优','ABEH',259.6)]
     for i,(label,ids,npv) in enumerate(rows):
         y=65+i*88
-        sc.text(5,y+33,label,25,NAVY,True)
+        if '\n' in label:
+            for j,part in enumerate(label.split('\n')):
+                sc.text(5,y+19+j*25,part,20,NAVY,True)
+        else:sc.text(5,y+33,label,25,NAVY,True)
         x=190
         for name in ids:
             width=610*amounts[name]/600;color=colors[name]

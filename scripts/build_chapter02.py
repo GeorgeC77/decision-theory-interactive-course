@@ -235,7 +235,7 @@ for i,s in enumerate(SLIDES,1):
     slides_html+=f'<section class="{classes}" data-slide="{i}" aria-label="第 {i} 页：{html.escape(s["title"])}">'+top+'<div class="slide-body">'+html_body(s)+'</div>'+takeaway+foot+'</section>'
 
 page='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>第二章 · 教学演示</title><link rel="stylesheet" href="../assets/slides.css"><link rel="stylesheet" href="../assets/ch2-slides.css"></head><body><header class="deck-toolbar"><a href="index.html">← 第二章学习</a><div><button id="prev">上一页</button><span id="page-counter" aria-live="polite"></span><button id="next">下一页</button></div><div><button id="notes-button" aria-expanded="false">讲稿</button><button id="fullscreen">全屏</button><a href="../downloads/chapter-02.pdf">PDF ↗</a></div></header><main id="deck" data-chapter="第二章">'''+slides_html+'''</main><aside id="speaker-notes" hidden></aside><p class="keyboard-hint">← → 翻页 · Home / End 首尾页 · F 全屏 · N 讲稿</p><script id="notes-data" type="application/json">'''+json.dumps([s['notes']for s in SLIDES],ensure_ascii=False).replace('</','<\/')+'''</script><script src="../assets/slides.js?v=20260919-1"></script></body></html>'''
-page=page.replace('../assets/ch2-slides.css"','../assets/ch2-slides.css?v=20261111-1"')
+page=page.replace('../assets/ch2-slides.css"','../assets/ch2-slides.css?v=20261111-2"')
 (SITE/'ch2/slides.html').write_text(page,encoding='utf-8')
 (ROOT/'tmp/ch2-pdf-layout-checks.json').write_text(json.dumps(checks,ensure_ascii=False,indent=2),encoding='utf-8')
 print(f'Built {len(SLIDES)} slides: {PDF}')

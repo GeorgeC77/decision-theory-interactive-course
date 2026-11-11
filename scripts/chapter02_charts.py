@@ -31,8 +31,13 @@ def draw_chart(s,c,para,line,H):
         line(left,py(y),left+w,py(y),'#dce3e9',.7)
         para(f'{y:.1f}',left-108,py(y)-12,103,17,'#586a7c',maxh=30)
     line(left,py(0),left+w,py(0),'#586a7c',1)
+    c.saveState()
+    c.setFont('YaHei',17)
+    c.setFillColor(HexColor('#586a7c'))
     for x,label in s.get('xticks',[(xmin+(xmax-xmin)*j/5,f'{xmin+(xmax-xmin)*j/5:g}')for j in range(6)]):
-        para(label,px(x)-32,top+h+9,140,17,'#586a7c',maxh=30)
+        line(px(x),top+h,px(x),top+h+5,'#586a7c',1)
+        c.drawCentredString(px(x),H-(top+h+27),str(label))
+    c.restoreState()
     para(s['ylabel'],left,220,650,18,'#244e79',maxh=32)
     para(s['xlabel'],left+160,top+h+47,450,18,'#586a7c',maxh=32)
     for idx,series in enumerate(s['series']):
@@ -43,7 +48,7 @@ def draw_chart(s,c,para,line,H):
         elif not series.get('scatter'):
             for a,b in zip(points,points[1:]):line(px(a[0]),py(a[1]),px(b[0]),py(b[1]),col,3)
         for x,y in points:
-            if len(points)<=10:
+            if len(points)<=10 or series.get('scatter'):
                 offset=(idx-(len(s['series'])-1)/2)*12 if s.get('chartmode')=='stem' else 0
                 c.setFillColor(HexColor(col));c.circle(px(x)+offset,H-py(y),3,fill=1,stroke=0)
         para(series['name'],810,234+idx*33,390,18,col,True,maxh=32)
@@ -63,6 +68,7 @@ def chart_html(s):
         parts.append(f'<line x1="{left}" y1="{py(y)}" x2="{left+w}" y2="{py(y)}" stroke="#dce3e9"/><text x="{left-9}" y="{py(y)+5}" text-anchor="end">{y:.1f}</text>')
     parts.append(f'<line x1="{left}" y1="{py(0)}" x2="{left+w}" y2="{py(0)}" stroke="#586a7c"/>')
     for x,label in s.get('xticks',[(xmin+(xmax-xmin)*j/5,f'{xmin+(xmax-xmin)*j/5:g}')for j in range(6)]):
+        parts.append(f'<line x1="{px(x)}" y1="{top+h}" x2="{px(x)}" y2="{top+h+5}" stroke="#586a7c"/>')
         parts.append(f'<text x="{px(x)}" y="310" text-anchor="middle">{e(label)}</text>')
     for idx,series in enumerate(s['series']):
         col=COLORS[idx%len(COLORS)]
@@ -72,8 +78,9 @@ def chart_html(s):
         elif not series.get('scatter'):
             xy=' '.join(f'{px(x):.2f},{py(y):.2f}' for x,y in series['points'])
             parts.append(f'<polyline points="{xy}" fill="none" stroke="{col}" stroke-width="3"/>')
-        if series.get('scatter'):
-            for x,y in series['points']:parts.append(f'<circle cx="{px(x)}" cy="{py(y)}" r="5" fill="{col}"/>')
+        if len(series['points'])<=10 or series.get('scatter'):
+            offset=(idx-(len(s['series'])-1)/2)*12 if s.get('chartmode')=='stem' else 0
+            for x,y in series['points']:parts.append(f'<circle cx="{px(x)+offset}" cy="{py(y)}" r="3" fill="{col}"/>')
     parts.extend([f'<text x="65" y="22">{e(s["ylabel"])}</text>',f'<text x="350" y="343" text-anchor="middle">{e(s["xlabel"])}</text></svg>'])
     legend=''.join(f'<p class="chart-legend" style="color:{COLORS[i%3]}">{e(x["name"])}</p>'for i,x in enumerate(s['series']))
     items=''.join('<h3>'+e(a)+'</h3><p>'+e(b).replace('\n','<br>')+'</p>' for a,b in s['items'])
