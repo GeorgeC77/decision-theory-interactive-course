@@ -62,7 +62,7 @@ VISIBLE_REQUIREMENTS = {
     56: ("不调查最优值 / 调查后期望值（扣费前）", "1.35 / 2.91", "27 000 / 27 800", "800 / 27 300"),
     57: ("风险中性", "信息可忽略", "不改变状态、损益和可行行动集合"),
     59: ("k=0:u(x)=z,CE=-10+30EU", "k≠0:CE=-10-(30/k)"),
-    61: ("第6题有偏好回答冲突", "第7题缺少状态概率"),
+    61: ("u(0)=0.02", "p=0.03时选赌局", "第6题由无差异回答求效用点", "第7题先补概率与效用依据"),
 }
 
 
@@ -87,8 +87,9 @@ def check_inventory(slides):
             "p28 speaker-note arithmetic correction was lost")
     require(all(term in slides[43]["notes"] for term in ("连续", "严格递增", "正仿射", "a>0")),
             "p44 must retain the CE conditions and positive affine transformation restriction")
-    require(all(term in slides[60]["notes"] for term in ("0.65", "p=.02", "p=.03", "未给")),
-            "p61 must retain textbook probability/elicitation caveats")
+    require(all(term in slides[60]["notes"] for term in ("0.65", "p=.02", "p=.03选择a₁", "u(80)=.135", "u(125)=.25", "插值假设", "未给"))
+            and "教材却答选择确定0" not in slides[60]["notes"],
+            "p61 must match the actual exercise-6 responses, utility points, interpolation assumptions and exercise-7 missing inputs")
     return {"pages": 62, "main": 53, "appendix": 9, "types": dict(counts)}
 
 

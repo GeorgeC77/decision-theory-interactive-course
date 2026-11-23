@@ -229,7 +229,7 @@ def certainty(sc):
     sc.text(745,151,f'EU = {eu:.1f}；EMV = {emv:g} 万元',24,GOLD,True)
     sc.text(745,197,f'确定 5 万元：u(5) = {u(emv):.4f}',23,RED,True)
     sc.text(745,243,f'CE = {ce:.4f} 万元 < 5 万元',24,GREEN,True)
-    sc.text(745,289,'凹效用：u(E[V]) > E[u(V)]',23,NAVY)
+    sc.text(745,289,'本例严格凹：u(E[V]) > E[u(V)]',23,NAVY)
     sc.text(745,331,'金色虚线连接两端结果的效用',21,MUTED)
 
 
