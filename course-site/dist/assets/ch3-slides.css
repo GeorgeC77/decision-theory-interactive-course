@@ -5,3 +5,7 @@
 .slide.figure .slide-body{top:31.666%;height:48.611%}.slide.figure .slide-body>svg{display:block;width:100%;height:auto}
 .slide.scenario .slide-body{top:29.166%;height:51.4%}.scenario-visual>img{display:block;width:100%;height:19.53125cqw;object-fit:cover;object-position:center}.scenario-copy{display:grid;grid-template-columns:1fr 1fr;gap:3.9cqw;margin-top:1cqw}.scenario-copy h3{font-size:2.11cqw;margin:0 0 1.2cqw}.scenario-copy p{font-size:1.875cqw;line-height:1.25}
 #deck .slide-data-table{table-layout:fixed}
+.slide-head > span {
+  display: block;
+  line-height: 1.4;
+}

@@ -42,6 +42,7 @@ VISIBLE_REQUIREMENTS = {
     7: ("低客流（0）", "高客流（1）", "非连续数轴"),
     10: ("L(a,θ)=", "EOL(a)=Σp(θ)L(a,θ)", "3.2"),
     11: ("风险中性", "信息先于行动", "不改变可行行动集合", "EVPI=10.4-7.2=3.2"),
+    13: ("SD=√[", "先对加权平方差求和，再开方", "28-21=7"),
     16: ("EMV5.6", "EMV7.2", "选大店"),
     18: ("P(前期好)=0.75", "P(后期好|前期好)=0.85", "P(后期好|前期差)=0.10", "不折现"),
     19: ("7×(0.85×150+0.15×10)-210=693", "7×(0.85×60+0.15×2)=359.1", "54.6"),
@@ -91,13 +92,15 @@ def check_inventory(slides):
 
 def expected_chart_series():
     """Original teaching models, evaluated independently of renderer helpers."""
+    # Include the exact kink: continuing past it is a different optimal action.
+    expansion_costs = [*range(0, 541, 10), 543.9, *range(550, 701, 10)]
     return {
         7: [[(0, 2), (1, 8)], [(0, -6), (1, 16)]],
         12: [[(p, max(0, 2 + 0.06*p, -6 + 0.22*p)) for p in range(101)],
              [(p, 2 + 0.14*p) for p in range(101)]],
-        21: [[(cost, 551.75) for cost in range(0, 701, 10)],
-             [(cost, 136.5 + 0.75*max(903-cost, 359.1) + 0.25*54.6 - 150)
-              for cost in range(0, 701, 10)]],
+        21: [[(cost, 551.75) for cost in expansion_costs],
+             [(cost, 677.4-0.75*cost if cost <= 543.9 else 269.475)
+              for cost in expansion_costs]],
         31: [[(j/10, 8.8-j/10) for j in range(31)], [(0, 7.2), (3, 7.2)]],
         40: [[(p, 0) for p in range(101)],
              [(p, 2 + 0.06*p) for p in range(101)],
@@ -122,7 +125,7 @@ def check_chart_values(slides):
                         f"p{page_no} series {index}: ({x}, {y}) != ({expected_x}, {expected_y})")
                 max_error = max(max_error, error)
                 total += 1
-    require(total == 777, f"Expected 777 independently checked points, got {total}")
+    require(total == 779, f"Expected 779 independently checked points, got {total}")
     return {"points": total, "max_absolute_error": max_error}
 
 

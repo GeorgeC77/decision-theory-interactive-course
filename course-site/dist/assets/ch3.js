@@ -1,6 +1,6 @@
 /* All calculations stay local. Static first panel and PDF links survive script failure. */
 (()=>{'use strict';
-const M=window.Ch3,$=id=>document.getElementById(id),fmt=(x,d=3)=>Number(x).toLocaleString('zh-CN',{maximumFractionDigits:d}),esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const M=window.Ch3,$=id=>document.getElementById(id),fmt=(x,d=3)=>{const n=Math.abs(Number(x))<1e-9?0:Number(x),digits=n!==0&&Math.abs(n)<.5*10**-d?Math.max(d,9):d;return n.toLocaleString('zh-CN',{maximumFractionDigits:digits});},esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const probabilityText=(x,d=6)=>{const epsilon=10**-d;if(x>0&&x<epsilon)return '<'+epsilon.toFixed(d);if(x<1&&1-x<epsilon)return '>'+(1-epsilon).toFixed(d);return fmt(x,d);};
 const value=id=>{const e=$(id);if(e.value.trim()===''||!e.validity.valid)throw Error(e.labels[0].textContent.trim()+'：请填写范围内的有效数值');const v=Number(e.value);if(!Number.isFinite(v))throw Error('请输入有限数值');return v;};
 const table=(id,head,rows)=>{$(id).innerHTML='<table><thead><tr>'+head.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';};
@@ -19,7 +19,7 @@ function plot(id,series,xlabel,ylabel,marker){
  if(marker!==undefined&&marker>=xmin&&marker<=xmax)s+=`<line x1="${X(marker)}" x2="${X(marker)}" y1="65" y2="285" stroke="#8697a9" stroke-dasharray="5 5"/>`;
  $(id).innerHTML=s+'</svg>';
 }
-let model=null,latest={},step=0,selectedReport=0;
+let model=null,latest={},step=0,selectedReport=0,activePanel='expectation';
 function naturalFrequency(r){
  const report=r.reports[selectedReport],reportName=selectedReport?'差报告':'好报告';
  const groups=r.reports.flatMap((x,i)=>x.joint.map((p,j)=>({report:i,state:j,count:1000*p})));
@@ -88,7 +88,7 @@ const bayesClear=['bayes-metrics','bayes-table','frequency','info-value','bayes-
 function shared(){const ok=safe(expectation,'ev-error',['ev-metrics','ev-chart','ev-table','ev-comment']);if(!ok){model=null;[...bayesClear,'sensitivity-chart','sensitivity-table','sensitivity-comment'].forEach(x=>$(x).innerHTML='');$('bayes-error').textContent='请先修正“期望与随机结果”中的输入。';return false;}const bayesOk=safe(bayes,'bayes-error',bayesClear);sensitivity();return bayesOk;}
 function refreshForExport(){const sharedOk=shared(),treeOk=safe(tree,'tree-error',['tree-stage','tree-svg','tree-details']),sampleOk=safe(sampling,'sample-error',['sample-metrics','sample-chart','sample-table','sample-comment']),utilityOk=safe(utility,'utility-error',['utility-metrics','utility-chart','utility-table','utility-comment']);return sharedOk&&treeOk&&sampleOk&&utilityOk;}
 function form(id,fn){$(id).addEventListener('input',fn);$(id).addEventListener('submit',e=>e.preventDefault());$(id).addEventListener('reset',()=>setTimeout(fn,0));}
-function navigate(){let hash=location.hash.slice(1);if(!document.querySelector('.panel#'+CSSescape(hash)))hash='expectation';document.querySelectorAll('.panel').forEach(x=>x.hidden=x.id!==hash);document.querySelectorAll('.side-nav a').forEach(x=>{const yes=x.hash==='#'+hash;x.classList.toggle('active',yes);if(yes)x.setAttribute('aria-current','location');else x.removeAttribute('aria-current');});}
+function navigate(){let hash=location.hash.slice(1);if(hash==='main')hash=activePanel;if(!document.querySelector('.panel#'+CSSescape(hash)))hash='expectation';activePanel=hash;document.querySelectorAll('.panel').forEach(x=>x.hidden=x.id!==hash);document.querySelectorAll('.side-nav a').forEach(x=>{const yes=x.hash==='#'+hash;x.classList.toggle('active',yes);if(yes)x.setAttribute('aria-current','location');else x.removeAttribute('aria-current');});}
 function CSSescape(s){return /^[a-z][a-z-]*$/.test(s)?s:'no-such-panel';}
 try{
  form('ev-form',shared);form('bayes-form',()=>safe(bayes,'bayes-error',bayesClear));form('tree-form',()=>{step=0;safe(tree,'tree-error',['tree-stage','tree-svg','tree-details']);});form('sample-form',()=>safe(sampling,'sample-error',['sample-metrics','sample-chart','sample-table','sample-comment']));form('utility-form',()=>safe(utility,'utility-error',['utility-metrics','utility-chart','utility-table','utility-comment']));
