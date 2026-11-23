@@ -1,6 +1,9 @@
 /* All calculations stay local. Static first panel and PDF links survive script failure. */
 (()=>{'use strict';
 const M=window.Ch3,$=id=>document.getElementById(id),fmt=(x,d=3)=>{const n=Math.abs(Number(x))<1e-9?0:Number(x),digits=n!==0&&Math.abs(n)<.5*10**-d?Math.max(d,9):d;return n.toLocaleString('zh-CN',{maximumFractionDigits:digits});},esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Payoffs change in tenths and both probabilities in hundredths. Products of
+// those three input values can contribute five decimal places (in 万元).
+const surveyMoney=x=>fmt(x,5)+' 万元';
 const probabilityText=(x,d=6)=>{const epsilon=10**-d;if(x>0&&x<epsilon)return '<'+epsilon.toFixed(d);if(x<1&&1-x<epsilon)return '>'+(1-epsilon).toFixed(d);return fmt(x,d);};
 const value=id=>{const e=$(id);if(e.value.trim()===''||!e.validity.valid)throw Error(e.labels[0].textContent.trim()+'：请填写范围内的有效数值');const v=Number(e.value);if(!Number.isFinite(v))throw Error('请输入有限数值');return v;};
 const table=(id,head,rows)=>{$(id).innerHTML='<table><thead><tr>'+head.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';};
@@ -45,22 +48,28 @@ function naturalFrequency(r){
  }
  svg+='</svg>';
  const cells=groups.map(g=>`<div class="frequency-count ${g.report===selectedReport?'is-selected':''}" data-expected-count="${g.count}" data-report="${g.report}" data-state="${g.state}"><span><i class="state-key ${g.state?'low':'high'}" aria-hidden="true"></i>${g.state?'低':'高'}客流 · ${g.report?'差':'好'}报告</span><strong>${fmt(g.count,4)}</strong></div>`).join('');
- const posterior=report.posterior?`${fmt(report.joint[0]*1000,4)} ÷ ${fmt(report.mass*1000,4)} = ${fmt(report.posterior[0]*100,2)}%`:'0 ÷ 0：未定义';
+ let posterior='0 ÷ 0：未定义';
+ if(report.posterior){
+  const percent=report.posterior[0]*100;
+  const rounded=Math.round(percent*100)/100;
+  const sign=Math.abs(percent-rounded)<1e-10?'=':'≈';
+  posterior=`${fmt(report.joint[0]*1000,4)} ÷ ${fmt(report.mass*1000,4)} ${sign} ${fmt(rounded,2)}%`;
+ }
  $('frequency').innerHTML=`<p class="frequency-prior">1000 个情境：高客流 <strong>${fmt(model.p[0]*1000,4)}</strong>，低客流 <strong>${fmt(model.p[1]*1000,4)}</strong>。每格为 1 个期望频数，小数用部分色格表示。</p><div class="frequency-grid">${svg}</div><div class="frequency-counts">${cells}</div><div class="posterior-reading" aria-live="polite"><span>${reportName}中，高客流占多少？</span><strong id="frequency-posterior" data-posterior="${report.posterior?report.posterior[0]:''}">${posterior}</strong><p>${report.posterior?`分母只数${reportName}的 ${fmt(report.mass*1000,4)} 个情境，不再是全部 1000 个。`:`P(${reportName})=0，此报告不会出现；后验不定义，对调查事前毛值的贡献为 0。`}</p></div>`;
  ['frequency-good','frequency-bad'].forEach((id,i)=>$(id).setAttribute('aria-pressed',String(i===selectedReport)));
 }
 function informationValue(r){
  const baseline=r.prior.best.value,perfect=r.prior.perfect,zero=x=>Math.abs(x)<1e-9?0:x;
  const lo=Math.min(0,zero(r.net)),rawHi=Math.max(0,baseline,r.gross,perfect),hi=rawHi===lo?lo+1:rawHi;
- const X=x=>(x-lo)/(hi-lo)*100,unit=x=>fmt(zero(x),4)+' 万元';
+ const X=x=>(x-lo)/(hi-lo)*100;
  const segment=(from,to,cls)=>`<span class="value-segment ${cls}" style="left:${X(Math.min(from,to))}%;width:${Math.abs(to-from)/(hi-lo)*100}%"></span>`;
  const rows=[
   ['baseline','无调查最佳 EMV',baseline,segment(0,baseline,'base'),`现在直接选：${names(r.prior.best.indices)}`],
-  ['gross','调查后毛值',r.gross,segment(0,baseline,'base')+segment(baseline,r.gross,'sample'),`无调查最佳 EMV + EVSI = ${unit(baseline)} + ${unit(r.evsi)}`],
-  ['net','调查后净值',r.net,segment(0,zero(r.net),r.net<0?'negative':'net'),`调查后毛值 − 调查费 = ${unit(r.gross)} − ${unit(r.cost)}`],
-  ['perfect','完全信息下最佳值',perfect,segment(0,baseline,'base')+segment(baseline,perfect,'perfect'),`无调查最佳 EMV + EVPI = ${unit(baseline)} + ${unit(r.prior.evpi)}`]
+  ['gross','调查后毛值',r.gross,segment(0,baseline,'base')+segment(baseline,r.gross,'sample'),`无调查最佳 EMV + EVSI = ${surveyMoney(baseline)} + ${surveyMoney(r.evsi)}`],
+  ['net','调查后净值',r.net,segment(0,zero(r.net),r.net<0?'negative':'net'),`调查后毛值 − 调查费 = ${surveyMoney(r.gross)} − ${surveyMoney(r.cost)}`],
+  ['perfect','完全信息下最佳值',perfect,segment(0,baseline,'base')+segment(baseline,perfect,'perfect'),`无调查最佳 EMV + EVPI = ${surveyMoney(baseline)} + ${surveyMoney(r.prior.evpi)}`]
  ];
- $('info-value').innerHTML='<p class="value-unit">共用金额轴 / 万元；虚线表示 0。蓝色实心为无调查基准，金色为 EVSI，绿色为 EVPI；调查净值用斜纹表示，负值改用红色。</p>'+rows.map(([key,label,v,bar,detail])=>`<div class="value-row" data-value-kind="${key}" data-value="${zero(v)}"><div class="value-label"><span>${label}</span><strong>${unit(v)}</strong></div><div class="value-track" aria-hidden="true">${bar}<i class="value-zero" style="left:${X(0)}%"></i></div><p>${esc(detail)}</p></div>`).join('')+`<div class="value-axis" aria-hidden="true"><span>${fmt(lo,4)}</span><span>${fmt(hi,4)} 万元</span></div><div class="value-conclusion" aria-live="polite"><strong>净改善 = EVSI − 调查费 = ${unit(r.evsi)} − ${unit(r.cost)} = ${unit(r.increment)}</strong><p>${r.prior.evpi<1e-9?'EVPI = 0：即使完全知道状态，也不能提高最优期望值；此时 EVSI 也为 0。':r.evsi<1e-9?'EVSI = 0：这项调查没有提高最优期望值，但完全信息仍可能有价值。':'EVSI 是这项调查带来的毛增量；EVPI 是完全信息的毛增量上限。'}${Math.abs(r.increment)<1e-9?' 净改善为 0，调查与不调查并列。':r.increment<0?' 净改善为负，应选择不调查。':' 净改善为正，按期望货币准则值得调查。'}</p></div>`;
+ $('info-value').innerHTML='<p class="value-unit">共用金额轴 / 万元；虚线表示 0。蓝色实心为无调查基准，金色为 EVSI，绿色为 EVPI；调查净值用斜纹表示，负值改用红色。</p>'+rows.map(([key,label,v,bar,detail])=>`<div class="value-row" data-value-kind="${key}" data-value="${zero(v)}"><div class="value-label"><span>${label}</span><strong>${surveyMoney(v)}</strong></div><div class="value-track" aria-hidden="true">${bar}<i class="value-zero" style="left:${X(0)}%"></i></div><p>${esc(detail)}</p></div>`).join('')+`<div class="value-axis" aria-hidden="true"><span>${fmt(lo,5)}</span><span>${surveyMoney(hi)}</span></div><div class="value-conclusion" aria-live="polite"><strong>净改善 = EVSI − 调查费 = ${surveyMoney(r.evsi)} − ${surveyMoney(r.cost)} = ${surveyMoney(r.increment)}</strong><p>${r.prior.evpi<1e-9?'EVPI = 0：即使完全知道状态，也不能提高最优期望值；此时 EVSI 也为 0。':r.evsi<1e-9?'EVSI = 0：这项调查没有提高最优期望值，但完全信息仍可能有价值。':'EVSI 是这项调查带来的毛增量；EVPI 是完全信息的毛增量上限。'}${Math.abs(r.increment)<1e-9?' 净改善为 0，调查与不调查并列。':r.increment<0?' 净改善为负，应选择不调查。':' 净改善为正，按期望货币准则值得调查。'}</p></div>`;
 }
 function cafeInput(){const p=value('prior');return {p:[p,1-p],a:[[0,0],[value('small-high'),value('small-low')],[value('large-high'),value('large-low')]]};}
 function expectation(){model=cafeInput();const {a,p}=model,r=M.evaluate(a,p),sim=M.simulate(a,p,value('runs'),value('seed'));latest.expectation={...model,...r,simulation:sim};$('prior-out').textContent=fmt(p[0]*100)+'%';metrics('ev-metrics',[['期望最优',names(r.best.indices)],['最优 EMV',fmt(r.best.value)+' 万'],['EVPI',fmt(r.evpi)+' 万']]);table('ev-table',['方案','EMV / 万元','SD / 万元','亏损概率','EOL / 万元','模拟均值'],a.map((_,i)=>[M.names[i],fmt(r.ev[i]),fmt(r.sd[i]),fmt(r.loss[i]*100)+'%',fmt(r.eol[i]),fmt(sim.means[i])]));plot('ev-chart',sim.paths.map((points,i)=>({name:M.names[i],points})),'独立抽样次数','累计样本均值 / 万元');$('ev-comment').textContent=`实际抽得高客流 ${sim.counts[0]} 次、低客流 ${sim.counts[1]} 次。理论期望不随种子改变；样本均值可能来回波动。`;}
@@ -68,8 +77,8 @@ function bayes(){
  if(!model)throw Error('请先修正期望实验中的输入');
  const s=value('sensitivity'),t=value('specificity'),cost=value('survey-cost'),r=M.bayes(model.a,model.p,[[s,1-t],[1-s,t]],cost);
  latest.bayes={sensitivity:s,specificity:t,...r};$('sensitivity-out').textContent=fmt(s*100)+'%';$('specificity-out').textContent=fmt(t*100)+'%';
- metrics('bayes-metrics',[['EVSI · 调查信息毛价值',fmt(r.evsi)+' 万元'],['EVPI · 完全信息价值',fmt(r.prior.evpi)+' 万元'],['调查费',fmt(cost)+' 万元'],['调查净改善',fmt(r.increment)+' 万元']]);
- $('bayes-comment').textContent=`调查后净价值 ${fmt(r.net)} 万元。`+(r.increment>1e-9?'按期望货币准则，值得调查。':r.increment< -1e-9?'费用超过信息毛价值，选择不调查。':'调查与不调查并列。')+' 同一模型应满足 0 ≤ EVSI ≤ EVPI。';
+ metrics('bayes-metrics',[['EVSI · 调查信息毛价值',surveyMoney(r.evsi)],['EVPI · 完全信息价值',surveyMoney(r.prior.evpi)],['调查费',surveyMoney(cost)],['调查净改善',surveyMoney(r.increment)]]);
+ $('bayes-comment').textContent=`调查后净价值 ${surveyMoney(r.net)}。`+(r.increment>1e-9?'按期望货币准则，值得调查。':r.increment< -1e-9?'费用超过信息毛价值，选择不调查。':'调查与不调查并列。')+' 同一模型应满足 0 ≤ EVSI ≤ EVPI。';
  naturalFrequency(r);informationValue(r);
  table('bayes-table',['报告','报告概率','后验 P(高)','后验 P(低)','最优行动','条件最优值 / 万元'],r.reports.map((x,i)=>[i===0?'好报告':'差报告',fmt(x.mass,5),x.posterior?fmt(x.posterior[0],6):'未定义',x.posterior?fmt(x.posterior[1],6):'未定义',x.best?names(x.best.indices):'不会出现',x.best?fmt(x.best.value,5):'—']));
 }
