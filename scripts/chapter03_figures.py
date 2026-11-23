@@ -150,9 +150,9 @@ def posterior_policy(sc):
     sc.text(20,27,'先用报告更新概率，再在同一后验下比较行动（万元）',24,NAVY,True)
     for i,((prob,post,values),report,fraction) in enumerate(zip(report_values(),['好报告','差报告'],['6/7','3/11'])):
         x=20+i*570;winner=max(range(2),key=values.__getitem__)
-        sc.rect(x,55,535,61,PALE)
-        sc.text(x+15,83,f'{report} P = {prob:.2f}',25,NAVY,True)
-        sc.text(x+15,108,f'P(高客流 | {report}) = {fraction}',21,MUTED)
+        sc.rect(x,55,535,76,PALE)
+        sc.text(x+15,81,f'{report} P = {prob:.2f}',25,NAVY,True)
+        sc.text(x+15,116,f'P(高客流 | {report}) = {fraction}',21,MUTED)
         for j,(name,value) in enumerate(zip(['小店','大店'],values)):
             y=147+j*74;color=GREEN if j==winner else NAVY
             sc.text(x+12,y+28,name,24,color,True)
@@ -167,7 +167,7 @@ def information(sc):
     d=DATA['campus'];base=max(weighted(row,d['prior']) for row in d['payoffs'])
     gross=sum(prob*max(values) for prob,post,values in report_values());net=gross-d['fee']
     sc.text(20,26,'价值水平 / 万元（各柱同一尺度）',24,NAVY,True)
-    for i,(name,value,color) in enumerate([('不调查',base,NAVY),('调查毛价值',gross,GREEN),('扣费后净价值',net,GOLD)]):
+    for i,(name,value,color) in enumerate([('不调查',base,NAVY),('调查后（扣费前）',gross,GREEN),('扣费后净价值',net,GOLD)]):
         y=71+i*80;sc.text(20,y+29,name,24,color,True)
         bar(sc,230,y,value,46,f'{value:.1f}',color)
     sc.line(810,50,810,295,GRID,2)
@@ -175,7 +175,7 @@ def information(sc):
     sc.text(850,135,f'EVSI = {gross-base:.1f}',30,GREEN,True)
     sc.text(850,185,f'净改善 = {net-base:.1f}',29,GOLD,True)
     sc.text(850,246,'EVPI = 3.2',29,NAVY,True)
-    sc.text(850,283,'完全信息的价值上限',22,MUTED)
+    sc.text(850,283,'各类调查的期望增益上限',22,MUTED)
     sc.text(20,337,'EVSI 是调查带来的毛增值；扣除一次调查费后，才得到净改善。',24,NAVY,True)
 
 

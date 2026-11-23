@@ -8,10 +8,20 @@ const metrics=(id,rows)=>{$(id).innerHTML=rows.map(([label,v])=>'<div><span>'+es
 const names=indices=>indices.map(i=>M.names[i]).join(' / ');
 const colors=['#8a98a6','#244e79','#bb8637'];
 function plot(id,series,xlabel,ylabel,marker){
- const pts=series.flatMap(s=>s.points),discrete=id==='ev-chart'||id==='sample-chart';let xmin=Math.min(...pts.map(p=>p[0])),xmax=Math.max(...pts.map(p=>p[0])),ymin=Math.min(0,...pts.map(p=>p[1])),ymax=Math.max(0,...pts.map(p=>p[1]));if(discrete)xmin=Math.min(0,xmin);if(xmin===xmax)xmax=xmin+1;if(ymin===ymax)ymax=ymin+1;const pad=(ymax-ymin)*.09;ymin-=pad;ymax+=pad;
+ const pts=series.flatMap(s=>s.points),discrete=id==='ev-chart'||id==='sample-chart';
+ let xmin=Math.min(...pts.map(p=>p[0])),xmax=Math.max(...pts.map(p=>p[0]));
+ if(discrete)xmin=Math.min(0,xmin);
+ if(xmin===xmax)xmax=xmin+1;
+ const minValue=Math.min(0,...pts.map(p=>p[1])),maxValue=Math.max(0,...pts.map(p=>p[1]));
+ const targetStep=(maxValue-minValue||1)/4;
+ const magnitude=10**Math.floor(Math.log10(targetStep));
+ const step=([1,2,2.5,5].find(v=>v>=targetStep/magnitude)||10)*magnitude;
+ const firstTick=Math.floor(minValue/step),lastTick=Math.max(firstTick+1,Math.ceil(maxValue/step));
+ const yTicks=Array.from({length:lastTick-firstTick+1},(_,i)=>Number(((firstTick+i)*step).toPrecision(12)));
+ const ymin=yTicks[0],ymax=yTicks.at(-1);
  const X=x=>65+(x-xmin)/(xmax-xmin)*595,Y=y=>285-(y-ymin)/(ymax-ymin)*220;
  let s='<svg viewBox="0 0 720 360" role="img" aria-label="'+esc(ylabel+'随'+xlabel+'变化')+'"><rect width="720" height="360" fill="#fbfcfe"/>';
- for(let i=0;i<=4;i++){const y=ymin+(ymax-ymin)*i/4;s+=`<line x1="65" y1="${Y(y)}" x2="660" y2="${Y(y)}" stroke="#dce3e9"/><text x="57" y="${Y(y)+5}" text-anchor="end" font-size="13" fill="#586a7c">${fmt(y,2)}</text>`;}
+ for(const y of yTicks)s+=`<line x1="65" y1="${Y(y)}" x2="660" y2="${Y(y)}" stroke="#dce3e9"/><text class="plot-y-tick" x="57" y="${Y(y)+5}" text-anchor="end" font-size="13" fill="#586a7c">${y}</text>`;
  const ticks=[...new Set(Array.from({length:5},(_,i)=>{const x=xmin+(xmax-xmin)*i/4;return discrete?Math.round(x):x;}))];
  for(const x of ticks)s+=`<text class="plot-x-tick" x="${X(x)}" y="308" text-anchor="middle" font-size="13" fill="#586a7c">${fmt(x,2)}</text>`;
  s+=`<text x="65" y="23" font-size="14" fill="#586a7c">${esc(ylabel)}</text><text x="365" y="333" text-anchor="middle" font-size="14" fill="#586a7c">${esc(xlabel)}</text>`;
@@ -63,7 +73,36 @@ function bayes(){
  naturalFrequency(r);informationValue(r);
  table('bayes-table',['报告','报告概率','后验 P(高)','后验 P(低)','最优行动','条件最优值 / 万元'],r.reports.map((x,i)=>[i===0?'好报告':'差报告',fmt(x.mass,5),x.posterior?fmt(x.posterior[0],6):'未定义',x.posterior?fmt(x.posterior[1],6):'未定义',x.best?names(x.best.indices):'不会出现',x.best?fmt(x.best.value,5):'—']));
 }
-function sensitivity(){if(!model)return;plot('sensitivity-chart',model.a.map((r,i)=>({name:M.names[i],points:Array.from({length:101},(_,j)=>[j/100,r[0]*j/100+r[1]*(1-j/100)])})),'高客流概率 p','EMV / 万元',model.p[0]);const intervals=M.sensitivity(model.a),merged=[];for(const item of intervals){const prev=merged.at(-1);if(prev&&String(prev.best)===String(item.best))prev.hi=item.hi;else merged.push({...item});}latest.sensitivity=merged;table('sensitivity-table',['概率开区间','最优方案','右端点最优方案'],merged.map(x=>[`${fmt(x.lo,6)} < p < ${fmt(x.hi,6)}`,names(x.best),names(M.evaluate(model.a,[x.hi,1-x.hi]).best.indices)]));$('sensitivity-comment').textContent='当前 p='+fmt(model.p[0],4)+'，最优：'+names(M.evaluate(model.a,model.p).best.indices)+'。p=0 时：'+names(M.evaluate(model.a,[0,1]).best.indices)+'；p=1 时：'+names(M.evaluate(model.a,[1,0]).best.indices)+'。开区间与端点并列情况分别显示。';}
+function sensitivity(){
+ if(!model)return;
+ const {a,p}=model;
+ const series=a.map((row,i)=>({name:M.names[i],points:Array.from({length:101},(_,j)=>{
+  const high=j/100;
+  return [high,row[0]*high+row[1]*(1-high)];
+ })}));
+ plot('sensitivity-chart',series,'高客流概率 p','EMV / 万元',p[0]);
+ const merged=[];
+ for(const item of M.sensitivity(a)){
+  const prev=merged.at(-1);
+  if(prev&&String(prev.best)===String(item.best))prev.hi=item.hi;
+  else merged.push({...item});
+ }
+ latest.sensitivity=merged;
+ const endpoints=[merged[0].lo,...merged.map(interval=>interval.hi)];
+ // Use the same precision in every row, increasing it for narrow optimal intervals.
+ let digits=6;
+ let labels=endpoints.map(x=>fmt(x,digits));
+ while(new Set(labels).size<labels.length&&digits<15){
+  digits++;
+  labels=endpoints.map(x=>fmt(x,digits));
+ }
+ const rows=merged.map((interval,i)=>[
+  `${labels[i]} < p < ${labels[i+1]}`,names(interval.best),
+  names(M.evaluate(a,[interval.hi,1-interval.hi]).best.indices)
+ ]);
+ table('sensitivity-table',['概率开区间','最优方案','右端点最优方案'],rows);
+ $('sensitivity-comment').textContent='当前 p='+fmt(p[0],4)+'，最优：'+names(M.evaluate(a,p).best.indices)+'。p=0 时：'+names(M.evaluate(a,[0,1]).best.indices)+'；p=1 时：'+names(M.evaluate(a,[1,0]).best.indices)+'。表中端点按需取近似值；并列方案按未舍入的概率计算。';
+}
 function tree(){const cost=value('expand-cost'),r=M.tree(cost);latest.tree={cost,...r};$('expand-cost-out').textContent=fmt(cost);$('tree-stage').textContent=['0 / 3：先预测后7年的条件价值。','1 / 3：圆圈按条件概率加权；扩建费已从扩建候选值扣除。','2 / 3：小店前期好时，在扩建与保持中取较大值。','3 / 3：回到现在，加前3年收益、扣初始投资，比较完整策略。'][step];$('tree-next').disabled=step===3;
  const tx=(x,y,t,size=17)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="${size}" fill="#244e79">${esc(t)}</text>`;
  let svg='<svg viewBox="0 0 960 400" role="img" aria-label="例3-8分步回溯：中店或小店；小店前期好时可扩建"><g stroke="#94a7b8" stroke-width="2" fill="none"><path d="M100 190L330 65M100 190L330 240M330 240L570 185M330 240L570 340M570 185L790 145M570 185L790 245"/></g><rect class="tree-node" x="85" y="175" width="30" height="30"/><circle class="tree-chance" cx="330" cy="240" r="13"/><rect class="tree-node" x="555" y="170" width="30" height="30"/>';

@@ -1,8 +1,9 @@
 """Read-only regression checks for the November 2026 chapter-three revision.
 
 Use env_Online_Lecture/python.exe -X utf8 scripts/verify_chapter03_revision.py.
-Expected chart values are independently recomputed below; no authoring or
-rendering module is imported. DOM/SVG checks do not claim browser visual QA.
+Expected chart values are independently recomputed below. Axis checks compare
+the rebuilt PDF/SVG against explicit expected ticks and positions.
+DOM/SVG checks do not claim browser visual QA.
 """
 from collections import Counter
 import json
@@ -58,6 +59,7 @@ VISIBLE_REQUIREMENTS = {
     47: ("0.2/0.3/0.5", "0.2525", "0.524"),
     48: ("成功概率0.8", "7/-2", "12/-10", "0.924"),
     50: ("P(有油)=0.3", "万美元", "EVSI=8", "净价值16", "净改善=3"),
+    56: ("不调查最优值 / 调查后期望值（扣费前）", "1.35 / 2.91", "27 000 / 27 800", "800 / 27 300"),
     57: ("风险中性", "信息可忽略", "不改变状态、损益和可行行动集合"),
     59: ("k=0:u(x)=z,CE=-10+30EU", "k≠0:CE=-10-(30/k)"),
     61: ("第6题有偏好回答冲突", "第7题缺少状态概率"),
@@ -214,11 +216,13 @@ def check_pdf():
 
 
 def main():
+    from verify_chapter03_chart_axes import check_artifacts as check_axes
     slides = json.loads((ROOT / "content/chapter-03-slides.json").read_text(encoding="utf-8"))
     results, failures = {}, {}
     checks = {"inventory": lambda: check_inventory(slides),
               "independent_chart_values": lambda: check_chart_values(slides),
-              "html": lambda: check_html(slides), "pdf": check_pdf}
+              "html": lambda: check_html(slides), "pdf": check_pdf,
+              "chart_axes": lambda: check_axes(slides)}
     for name, check in checks.items():
         try:
             results[name] = check()

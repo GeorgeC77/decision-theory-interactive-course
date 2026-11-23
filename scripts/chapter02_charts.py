@@ -13,12 +13,30 @@ def pdf_math(text):
     return re.sub('['+''.join(sup)+']+',lambda m:'<super>'+''.join(sup[c] for c in m[0])+'</super>',s)
 
 COLORS=['#244e79','#bb8637','#24664d']
+def vertical_ticks(s, ymin, ymax):
+    """Optional numeric ticks share exact labels and positions in both formats."""
+    if 'yticks' in s:
+        # Preserve supplied decimals rather than rounding a grid position to a
+        # different numeric label (for example, 0.53 to 0.5).
+        return [(value, str(value)) for value in s['yticks']]
+    return [(ymin+(ymax-ymin)*j/4, f'{ymin+(ymax-ymin)*j/4:.1f}')
+            for j in range(5)]
+
+
 def geometry(s):
     pts=[p for series in s['series'] for p in series['points']]
     xmin=min(p[0] for p in pts);xmax=max(p[0] for p in pts)
     ymin=min(0,min(p[1] for p in pts));ymax=max(0,max(p[1] for p in pts))
     span=ymax-ymin or 1
-    lo,hi=s.get('ylimits',[ymin-span*.07,ymax+span*.13])
+    limits=[ymin-span*.07,ymax+span*.13]
+    if 'yticks' in s:
+        ticks=s['yticks']
+        if len(ticks)<2 or not all(math.isfinite(v) for v in ticks) or any(a>=b for a,b in zip(ticks,ticks[1:])):
+            raise ValueError('yticks must contain at least two finite, increasing numbers')
+        limits=[ticks[0],ticks[-1]]
+    lo,hi=s.get('ylimits',limits)
+    if 'yticks' in s and (s['yticks'][0]<lo or s['yticks'][-1]>hi):
+        raise ValueError('yticks must lie within ylimits')
     return xmin,xmax or 1,lo,hi
 
 def draw_chart(s,c,para,line,H):
@@ -26,10 +44,9 @@ def draw_chart(s,c,para,line,H):
     xmin,xmax,ymin,ymax=geometry(s);left,top,w,h=122,260,620,255
     px=lambda x:left+(x-xmin)/(xmax-xmin)*w
     py=lambda y:top+h-(y-ymin)/(ymax-ymin)*h
-    for j in range(5):
-        y=ymin+(ymax-ymin)*j/4
+    for y,label in vertical_ticks(s,ymin,ymax):
         line(left,py(y),left+w,py(y),'#dce3e9',.7)
-        para(f'{y:.1f}',left-108,py(y)-12,103,17,'#586a7c',maxh=30)
+        para(label,left-108,py(y)-12,103,17,'#586a7c',maxh=30)
     line(left,py(0),left+w,py(0),'#586a7c',1)
     c.saveState()
     c.setFont('YaHei',17)
@@ -63,9 +80,8 @@ def chart_html(s):
     py=lambda y:top+h-(y-ymin)/(ymax-ymin)*h
     e=html.escape
     parts=[f'<svg viewBox="0 0 690 355" role="img" aria-label="{e(s["title"])}"><title>{e(s["title"])}</title>']
-    for j in range(5):
-        y=ymin+(ymax-ymin)*j/4
-        parts.append(f'<line x1="{left}" y1="{py(y)}" x2="{left+w}" y2="{py(y)}" stroke="#dce3e9"/><text x="{left-9}" y="{py(y)+5}" text-anchor="end">{y:.1f}</text>')
+    for y,label in vertical_ticks(s,ymin,ymax):
+        parts.append(f'<line x1="{left}" y1="{py(y)}" x2="{left+w}" y2="{py(y)}" stroke="#dce3e9"/><text x="{left-9}" y="{py(y)+5}" text-anchor="end">{e(label)}</text>')
     parts.append(f'<line x1="{left}" y1="{py(0)}" x2="{left+w}" y2="{py(0)}" stroke="#586a7c"/>')
     for x,label in s.get('xticks',[(xmin+(xmax-xmin)*j/5,f'{xmin+(xmax-xmin)*j/5:g}')for j in range(6)]):
         parts.append(f'<line x1="{px(x)}" y1="{top+h}" x2="{px(x)}" y2="{top+h+5}" stroke="#586a7c"/>')

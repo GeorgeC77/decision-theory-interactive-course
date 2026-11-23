@@ -32,7 +32,8 @@ page=page.replace('<p id="tree-stage"','<p id="tree-error" class="error" role="a
 page=page.replace('<div class="lab-grid"><div id="utility-chart"','<p id="utility-error" class="error" role="alert"></p><div class="lab-grid"><div id="utility-chart"')
 page=page.replace('<a href="../index.html">课程地图 →</a></div></main>','<a href="../ch4/index.html">第四章 →</a></div></main>')
 page=page.replace('<main class="chapter-main" id="main">','<main class="chapter-main" id="main" tabindex="-1">')
-page=page.replace('href="../assets/ch3.css"','href="../assets/ch3.css?v=20261123-3"').replace('src="../assets/ch3.js"','src="../assets/ch3.js?v=20261123-3"')
+page=page.replace('href="../assets/ch3.css"','href="../assets/ch3.css?v=20261123-4"').replace('src="../assets/ch3.js"','src="../assets/ch3.js?v=20261123-4"')
+page=page.replace('src="../assets/ch3-model.js"','src="../assets/ch3-model.js?v=20261123-4"')
 (out/'index.html').write_text(page,encoding='utf-8')
 for name,target in [('第三章-学生任务单.md','chapter-03-task.md'),('第三章-教师使用指南.md','chapter-03-teacher.md'),('第三章-知识点覆盖与核对.md','chapter-03-coverage.md')]:
     shutil.copyfile(r/'docs'/name,r/'course-site/dist/downloads'/target)

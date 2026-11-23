@@ -22,4 +22,12 @@ close(M.sampling(4).evsi,.5891625);close(M.sampling(0,10,10).cost,0);for(let n=0
 r=M.simulate(M.cafe,[.6,.4],1000,2026);assert.deepEqual(r,M.simulate(M.cafe,[.6,.4],1000,2026));close(r.counts.reduce((x,y)=>x+y),1000);r.means.forEach((x,i)=>close(x,(r.counts[0]*M.cafe[i][0]+r.counts[1]*M.cafe[i][1])/1000));close(M.simulate(M.cafe,[0,1],10,0).means[2],-6);
 assert.throws(()=>M.evaluate(M.cafe,[.6,.5]));assert.throws(()=>M.evaluate([[1]],[.5,.5]));assert.throws(()=>M.sampling(4.5));assert.throws(()=>M.bayes(M.cafe,[.6,.4],[[.8,.2],[.8,.8]]));assert.throws(()=>M.utility(21,3));assert.throws(()=>M.simulate(M.cafe,[.6,.4],1,-1));
 close(M.sensitivity([[50,-20],[-15,100]])[0].hi,24/37);
+// A single three-way tie must not become a spurious, rounded-empty interval.
+for(const [small,large,p] of [[[.3,-.2],[.9,-.6],.4],[[.1,-.2],[.3,-.6],2/3],[[.4,-.1],[1.2,-.3],.2],[[.7,-.3],[2.1,-.9],.3]]){
+ const a=[[0,0],small,large],intervals=M.sensitivity(a);assert.equal(intervals.length,2);close(intervals[0].lo,0);close(intervals[0].hi,p);close(intervals[1].lo,p);close(intervals[1].hi,1);assert.deepEqual(intervals[0].best,[0]);assert.deepEqual(intervals[1].best,[2]);assert.deepEqual(M.evaluate(a,[p,1-p]).best.indices,[0,1,2]);
+}
+// Nearby but genuinely different intersections must remain separate.
+r=M.sensitivity([[0,0],[100,-99.9],[99.9,-99.8]]);assert.equal(r.length,4);assert.ok(r[1].hi-r[1].lo>1e-8);
+// Extending the run count preserves the same seeded sequence and first ten points.
+for(const seed of [0,1,2026,4294967295]){const short=M.simulate(M.cafe,[.6,.4],10,seed),long=M.simulate(M.cafe,[.6,.4],10000,seed);short.paths.forEach((points,i)=>assert.deepEqual(points,long.paths[i].slice(0,10)));close(long.counts.reduce((a,b)=>a+b,0),10000);}
 console.log(`Chapter 3 mathematical checks passed (${count} numeric/property checks plus assertions).`);
