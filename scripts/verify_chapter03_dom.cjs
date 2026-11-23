@@ -32,6 +32,7 @@ check($('runtime-status').hidden,'initialization: '+$('runtime-status').textCont
 check(JSON.stringify(frequencyCounts().map(x=>Math.round(x)))==='[480,80,120,320]','default natural-frequency cells');
 near([...d.querySelectorAll('#frequency svg rect')].reduce((sum,e)=>sum+Number(e.getAttribute('width'))*Number(e.getAttribute('height')),0),100000,'1000 unit cells including partial cells');
 near(Number($('frequency-posterior').dataset.posterior),6/7,'good-report denominator');
+check($('frequency-posterior').textContent==='480 ÷ 560 ≈ 85.71%','rounded posterior is marked as an approximation');
 $('frequency-bad').click();near(Number($('frequency-posterior').dataset.posterior),3/11,'bad-report denominator');check($('frequency-bad').getAttribute('aria-pressed')==='true','selected report accessible state');$('frequency-good').click();
 near(infoValue('baseline'),7.2,'value baseline');near(infoValue('gross'),8.8,'value gross');near(infoValue('net'),8.3,'value net');near(infoValue('perfect'),10.4,'value perfect');visualFinite();
 change('runs','1');check(d.querySelectorAll('#ev-chart circle').length===3,'one simulation displays three visible data points');check([...d.querySelectorAll('#ev-chart .plot-x-tick')].map(e=>e.textContent).join(',')==='0,1','one simulation has integer ticks');change('runs','2');check([...d.querySelectorAll('#ev-chart .plot-x-tick')].every(e=>Number.isInteger(Number(e.textContent))),'short simulation has integer ticks');change('runs','1000');
@@ -39,6 +40,20 @@ for(const id of ['expectation','tree','bayes','sampling','robustness','utility',
 w.location.hash='invalid[selector';w.dispatchEvent(new w.HashChangeEvent('hashchange'));check(!$('expectation').hidden,'unknown hash falls back safely');check(d.querySelectorAll('.side-nav [aria-current="location"]').length===1,'exactly one current navigation link');
 w.location.hash='bayes';w.dispatchEvent(new w.HashChangeEvent('hashchange'));w.location.hash='main';w.dispatchEvent(new w.HashChangeEvent('hashchange'));check(!$('bayes').hidden,'skip-to-main preserves selected experiment');check(d.querySelector('.side-nav [aria-current="location"]').hash==='#bayes','skip-to-main preserves navigation state');check($('main').getAttribute('tabindex')==='-1','skip target can receive browser focus');
 change('prior','.1');change('sensitivity','.5');change('specificity','1');change('survey-cost','.4');check($('bayes-metrics').lastElementChild.textContent.includes('0 万元')&&!$('bayes-metrics').lastElementChild.textContent.includes('-0'),'roundoff tie does not display negative zero');check($('bayes-comment').textContent.includes('并列'),'roundoff tie explanation');$('bayes-form').reset();await new Promise(r=>setTimeout(r,5));
+// A 0.1 change in the high-state payoff can make a survey just worth its fee.
+change('large-high','16.1');
+for(const [p,s,t,c,evsi,increment,net] of [
+ [.28,.83,.76,.5,.50004,.00004,3.68004],
+ [.27,.74,.74,.1,.09998,-.00002,3.61998]
+]){
+ for(const [id,v] of Object.entries({prior:p,sensitivity:s,specificity:t,'survey-cost':c}))change(id,String(v));
+ const displayed=[...$('bayes-metrics').querySelectorAll('strong')].map(el=>Number.parseFloat(el.textContent));
+ near(displayed[0],evsi,'EVSI shown at the precision of the input grid');
+ near(displayed[3],increment,'gain remains signed at either side of the fee');
+ check(d.querySelector('.value-conclusion strong').textContent.endsWith(`${evsi} 万元 − ${c} 万元 = ${increment} 万元`),'printed subtraction agrees with the result');
+ check($('bayes-comment').textContent.includes(`调查后净价值 ${net} 万元`),'net value retains the same precision as EVSI');
+}
+$('ev-form').reset();$('bayes-form').reset();await new Promise(r=>setTimeout(r,5));
 for(const [id,v] of Object.entries({'prior':.01,'small-high':.1,'small-low':-100,'large-high':0,'large-low':0,'sensitivity':.01,'specificity':1,'survey-cost':0}))change(id,String(v));check($('bayes-metrics').firstElementChild.textContent.includes('0.00001 万元'),'small positive EVSI remains visible');check(d.querySelector('[data-value-kind="gross"] strong').textContent==='0.00001 万元','small gross value is not rounded to zero');check($('bayes-comment').textContent.includes('0.00001 万元')&&$('bayes-comment').textContent.includes('值得调查'),'small-value recommendation agrees with visible amount');$('ev-form').reset();$('bayes-form').reset();await new Promise(r=>setTimeout(r,5));
 change('prior','0');check($('ev-metrics').textContent.includes('小店'),'prior endpoint');near(frequencyCounts()[0]+frequencyCounts()[2],0,'zero prior removes high-frequency cells');near(infoValue('perfect'),infoValue('baseline'),'known-state EVPI zero');change('large-high','');check($('ev-error').textContent,'invalid input');check(!$('ev-table').textContent,'stale table');check(!$('bayes-table').textContent,'stale dependent table');check(!$('frequency').textContent&&!$('info-value').textContent,'invalid shared inputs clear both visuals');
 $('ev-form').reset();await new Promise(r=>setTimeout(r,5));check(!$('ev-error').textContent,'reset recovery');check($('bayes-metrics').textContent.includes('1.1'),'dependent recovery');
