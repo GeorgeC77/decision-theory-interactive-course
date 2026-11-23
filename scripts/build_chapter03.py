@@ -4,6 +4,8 @@ Run with the project's env_Online_Lecture Python. No textbook raster pages are c
 from pathlib import Path
 from chapter02_charts import draw_chart, chart_html, pdf_math
 from chapter03_tree import draw_tree, tree_html
+from chapter03_figures import draw_figure, figure_html
+from reportlab.lib.utils import ImageReader
 import json, html, shutil, math
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -152,6 +154,19 @@ def render_equations(s):
         para(first,70,y+51,1135,25,INK,maxh=50)
         para(second,70,y+98,1135,25,INK,maxh=50)
 
+def render_scenario(s):
+    asset=ImageReader(str(SITE/'assets'/s['image']))
+    iw,ih=asset.getSize();height=1140*ih/iw
+    c.saveState()
+    clip=c.beginPath();clip.rect(70,H-460,1140,250);c.clipPath(clip,stroke=0)
+    top=210-(height-250)/2
+    c.drawImage(asset,70,H-top-height,1140,height,mask='auto')
+    c.restoreState()
+    for i,(label,body) in enumerate(s['items']):
+        x=70+i*590
+        para(label,x,470,540,27,BLUE,True,maxh=45)
+        para(body,x,518,540,24,INK,maxh=62,leading=30)
+
 for n,s in enumerate(SLIDES,1):
     c.bookmarkPage(f'slide-{n}');c.addOutlineEntry(s['title'],f'slide-{n}',0)
     if s['type']=='cover':
@@ -176,6 +191,8 @@ for n,s in enumerate(SLIDES,1):
         elif typ=='equations':render_equations(s)
         elif typ=='chart':draw_chart(s,c,para,line,H)
         elif typ=='tree':draw_tree(c,para,line,rect,H)
+        elif typ=='figure':draw_figure(s,c,H)
+        elif typ=='scenario':render_scenario(s)
         else:raise ValueError(typ)
     checks.append({'page':n,'title':s['title'],'layout':'passed'})
     c.showPage()
@@ -188,6 +205,8 @@ def html_body(s):
     t=s['type']
     if t=='chart':return chart_html(s)
     if t=='tree':return tree_html()
+    if t=='figure':return figure_html(s)
+    if t=='scenario':return '<div class="scenario-visual"><img src="../assets/'+s['image']+'" alt="同一家校园咖啡店在高客流与低客流下的情境对照"><div class="scenario-copy">'+''.join('<article><h3>'+esc(a)+'</h3><p>'+esc(b)+'</p></article>'for a,b in s['items'])+'</div></div>'
     if t=='cover':return '<div class="cover-copy"><p>决策理论与方法</p><p class="gold">第三章</p><h1>风险型<br>决策分析</h1><p>客流不确定，怎么选？<br>调查与风险如何评价？</p><p class="cover-meta">大三经管类 · 8 学时</p></div>'
     if t=='table':return '<table><thead><tr>'+''.join('<th>'+esc(x)+'</th>'for x in s['headers'])+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+esc(x)+'</td>'for x in row)+'</tr>'for row in s['rows'])+'</tbody></table>'
     if t=='flow':return '<div class="diagram-flow">'+''.join(f'<article><h3>{esc(a)}</h3><p>{esc(b)}</p></article>'for a,b in zip(s['steps'],s['details']))+'</div>'
@@ -206,6 +225,7 @@ for i,s in enumerate(SLIDES,1):
     slides_html+=f'<section class="{classes}" data-slide="{i}" aria-label="第 {i} 页：{html.escape(s["title"])}">'+top+'<div class="slide-body">'+html_body(s)+'</div>'+takeaway+foot+'</section>'
 
 page='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>第三章 · 教学演示</title><link rel="stylesheet" href="../assets/slides.css"><link rel="stylesheet" href="../assets/ch3-slides.css"></head><body><header class="deck-toolbar"><a href="index.html">← 第三章学习</a><div><button id="prev">上一页</button><span id="page-counter" aria-live="polite"></span><button id="next">下一页</button></div><div><button id="notes-button" aria-expanded="false">讲稿</button><button id="fullscreen">全屏</button><a href="../downloads/chapter-03.pdf">PDF ↗</a></div></header><main id="deck" data-chapter="第三章">'''+slides_html+'''</main><aside id="speaker-notes" hidden></aside><p class="keyboard-hint">← → 翻页 · Home / End 首尾页 · F 全屏 · N 讲稿</p><script id="notes-data" type="application/json">'''+json.dumps([s['notes']for s in SLIDES],ensure_ascii=False).replace('</','<\/')+'''</script><script src="../assets/slides.js?v=20260919-1"></script></body></html>'''
+page=page.replace('../assets/ch3-slides.css"','../assets/ch3-slides.css?v=20261123-1"')
 (SITE/'ch3/slides.html').write_text(page,encoding='utf-8')
 (ROOT/'tmp/ch3-pdf-layout-checks.json').write_text(json.dumps(checks,ensure_ascii=False,indent=2),encoding='utf-8')
 print(f'Built {len(SLIDES)} slides: {PDF}')
