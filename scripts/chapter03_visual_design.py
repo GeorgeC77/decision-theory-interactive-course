@@ -13,7 +13,7 @@ def apply_visual_design(slides):
              26:'frequencies',28:'posterior_policy',30:'information',36:'sampling',
              42:'lottery',44:'certainty',50:'oil'}
     for page,key in mapping.items():slides[page-1].update(type='figure',figure=key)
-    slides[5]['lead']='EMV(a)=Σp(θ)V(a,θ)；高、低客流概率为0.6、0.4。金额：万元。'
+    slides[5]['lead']='a为行动，θ为状态，V为净价值；EMV(a)=Σp(θ)V(a,θ)，按状态求和。'
     slides[5]['takeaway']='风险中性、无额外约束时选EMV最大的大店；期望7.2不表示某次一定得到7.2。'
     slides[9]['lead']='L(a,θ)=该状态最优损益−本方案损益；EOL(a)=Σp(θ)L(a,θ)。'
     slides[9]['takeaway']='机会损失不是账面亏损；同一模型下 EOL(a)=EVwPI−EMV(a)，因此两种准则排序一致。'
@@ -26,8 +26,8 @@ def apply_visual_design(slides):
     slides[35]['lead']='有放回抽样n=4；X为缺陷数；不买收益为0。金额：元。'
     slides[35]['takeaway']='P(X=0)=0.56453125；该分支联合贡献1.5891625；EVSI=1.5891625−1=0.5891625元。'
     slides[41]['lead']='两个方案的货币期望同为5万元，结果分布与风险却不同。'
-    slides[43]['lead']='EU=Σpu(x)；u(CE)=EU。本图取教学参数k=3，x∈[−10,20]万元。'
-    slides[43]['takeaway']='凹效用下 E[u(X)]≤u(E[X])；风险溢价=EMV−CE；效用数值没有货币单位。'
-    slides[43]['notes']+=' 本图用附录F的归一化指数效用，k=3；风险方案EU=0.5，CE约−3.5544万元，确定5万元的效用约0.8176，风险溢价约8.5544万元。几何读法：先在纵轴找EU，再水平对应效用曲线并向下读CE；不能把EU=0.5解释成0.5万元。'
+    slides[43]['lead']='确定等价CE：与风险方案同样满意的确定金额，满足u(CE)=EU；本图k=3。'
+    slides[43]['takeaway']='EU=Σpu(x)；凹效用下E[u(X)]≤u(E[X])；风险溢价=EMV−CE；效用数值没有货币单位。'
+    slides[43]['notes']+=' X表示随机净结果，x表示其可能取值，p为相应概率；EU先对每个结果求效用再加权。CE是使决策者与原风险方案无差异的确定金额，不是平均效用金额。本图用附录F在x∈[−10,20]万元上归一化的指数效用，k=3；风险方案EU=0.5，CE约−3.5544万元，确定5万元的效用约0.8176，风险溢价约8.5544万元。几何读法：先在纵轴找EU，再水平对应效用曲线并向下读CE；不能把EU=0.5解释成0.5万元。'
     slides[49]['lead']='沿用教材先验P(有油)=0.3，试验费5；所有金额单位：万美元。'
     return slides

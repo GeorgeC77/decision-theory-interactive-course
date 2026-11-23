@@ -80,11 +80,20 @@ def columns(s):
         para(item[0],x,258,cw,29,BLUE,True,maxh=86)
         para(item[1],x,324,cw,22 if s['type']=='sources' else 25,INK,maxh=270)
 
+def table_widths(column_count):
+    """Keep the HTML and PDF table columns on the same authored grid."""
+    if column_count == 3:
+        return [.23, .38, .39]
+    if column_count == 2:
+        return [.3, .7]
+    return [1 / column_count] * column_count
+
+
 def render_table(s):
     def cell(text,bold=False):
         return Paragraph(pdf_math(text),ParagraphStyle('table',fontName='YaHeiBold' if bold else 'YaHei',fontSize=19 if s.get('appendix') else 23,leading=25 if s.get('appendix') else 33,wordWrap='CJK',textColor=colors.HexColor(INK)))
     data=[[cell(x,True)for x in s['headers']]]+[[cell(x)for x in row]for row in s['rows']]
-    ratios=[.23,.38,.39] if len(data[0])==3 else ([1/len(data[0])]*len(data[0]) if len(data[0])>3 else [.3,.7])
+    ratios=table_widths(len(data[0]))
     t=Table(data,colWidths=[1140*x for x in ratios])
     pad=7 if s.get('appendix') else 10
     t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor(PALE)),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.7,colors.HexColor(LINE)),('LEFTPADDING',(0,0),(-1,-1),16),('RIGHTPADDING',(0,0),(-1,-1),16),('TOPPADDING',(0,0),(-1,-1),pad),('BOTTOMPADDING',(0,0),(-1,-1),pad)]))
@@ -208,7 +217,9 @@ def html_body(s):
     if t=='figure':return figure_html(s)
     if t=='scenario':return '<div class="scenario-visual"><img src="../assets/'+s['image']+'" alt="同一家校园咖啡店在高客流与低客流下的情境对照"><div class="scenario-copy">'+''.join('<article><h3>'+esc(a)+'</h3><p>'+esc(b)+'</p></article>'for a,b in s['items'])+'</div></div>'
     if t=='cover':return '<div class="cover-copy"><p>决策理论与方法</p><p class="gold">第三章</p><h1>风险型<br>决策分析</h1><p>客流不确定，怎么选？<br>调查与风险如何评价？</p><p class="cover-meta">大三经管类 · 8 学时</p></div>'
-    if t=='table':return '<table><thead><tr>'+''.join('<th>'+esc(x)+'</th>'for x in s['headers'])+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+esc(x)+'</td>'for x in row)+'</tr>'for row in s['rows'])+'</tbody></table>'
+    if t=='table':
+        columns='<colgroup>'+''.join(f'<col style="width:{width*100:g}%">' for width in table_widths(len(s['headers'])))+'</colgroup>'
+        return '<table class="slide-data-table">'+columns+'<thead><tr>'+''.join('<th>'+esc(x)+'</th>'for x in s['headers'])+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+esc(x)+'</td>'for x in row)+'</tr>'for row in s['rows'])+'</tbody></table>'
     if t=='flow':return '<div class="diagram-flow">'+''.join(f'<article><h3>{esc(a)}</h3><p>{esc(b)}</p></article>'for a,b in zip(s['steps'],s['details']))+'</div>'
     if t=='car':
         rows=[('原始情境',10,2.19),('油价 × 4',10,8.76),('节油 40% + 调整车价',6.944,5.256)]
@@ -224,8 +235,8 @@ for i,s in enumerate(SLIDES,1):
     foot=''if s['type']=='cover'else'<div class="slide-source">'+esc(s.get('source',''))+f'<span>{i:02} / {len(SLIDES):02}</span></div>'
     slides_html+=f'<section class="{classes}" data-slide="{i}" aria-label="第 {i} 页：{html.escape(s["title"])}">'+top+'<div class="slide-body">'+html_body(s)+'</div>'+takeaway+foot+'</section>'
 
-page='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>第三章 · 教学演示</title><link rel="stylesheet" href="../assets/slides.css"><link rel="stylesheet" href="../assets/ch3-slides.css"></head><body><header class="deck-toolbar"><a href="index.html">← 第三章学习</a><div><button id="prev">上一页</button><span id="page-counter" aria-live="polite"></span><button id="next">下一页</button></div><div><button id="notes-button" aria-expanded="false">讲稿</button><button id="fullscreen">全屏</button><a href="../downloads/chapter-03.pdf">PDF ↗</a></div></header><main id="deck" data-chapter="第三章">'''+slides_html+'''</main><aside id="speaker-notes" hidden></aside><p class="keyboard-hint">← → 翻页 · Home / End 首尾页 · F 全屏 · N 讲稿</p><script id="notes-data" type="application/json">'''+json.dumps([s['notes']for s in SLIDES],ensure_ascii=False).replace('</','<\/')+'''</script><script src="../assets/slides.js?v=20260919-1"></script></body></html>'''
-page=page.replace('../assets/ch3-slides.css"','../assets/ch3-slides.css?v=20261123-1"')
+page='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>第三章 · 教学演示</title><link rel="stylesheet" href="../assets/slides.css"><link rel="stylesheet" href="../assets/ch3-slides.css"></head><body><header class="deck-toolbar"><a href="index.html">← 第三章学习</a><div><button id="prev">上一页</button><span id="page-counter" aria-live="polite"></span><button id="next">下一页</button></div><div><button id="notes-button" aria-expanded="false">讲稿</button><button id="fullscreen">全屏</button><a href="../downloads/chapter-03.pdf">PDF ↗</a></div></header><main id="deck" data-chapter="第三章">'''+slides_html+'''</main><aside id="speaker-notes" hidden></aside><p class="keyboard-hint">← → 翻页 · Home / End 首尾页 · F 全屏 · N 讲稿</p><script id="notes-data" type="application/json">'''+json.dumps([s['notes']for s in SLIDES],ensure_ascii=False).replace('</','<\/')+'''</script><script src="../assets/slides.js?v=20261123-2"></script></body></html>'''
+page=page.replace('../assets/ch3-slides.css"','../assets/ch3-slides.css?v=20261123-2"')
 (SITE/'ch3/slides.html').write_text(page,encoding='utf-8')
 (ROOT/'tmp/ch3-pdf-layout-checks.json').write_text(json.dumps(checks,ensure_ascii=False,indent=2),encoding='utf-8')
 print(f'Built {len(SLIDES)} slides: {PDF}')

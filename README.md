@@ -42,9 +42,9 @@ GitHub Pages 发布 `gh-pages` 分支根目录，内容来自 `main` 分支的 `
 
 ## 第三章交付物
 
-第三章在线入口：https://decision-theory-lab-20260916.cuigengutokyo.chatgpt.site/ch3/index.html
+第三章学生可直接打开[交互学习页](https://georgec77.github.io/decision-theory-interactive-course/ch3/index.html)、[课堂演示](https://georgec77.github.io/decision-theory-interactive-course/ch3/slides.html)或[PDF课件](https://georgec77.github.io/decision-theory-interactive-course/downloads/chapter-03.pdf)。
 
-本地入口：`course-site/dist/ch3/index.html`；运行 `start-course.cmd` 后可访问 <http://127.0.0.1:8765/ch3/index.html>。在线版保留仅所有者权限；课堂分发可使用最新的 `output/第一至六章教学包.zip`。
+离线教学包 `output/第一至六章教学包.zip` 完整解压后可打开 `course-site/dist/ch3/index.html`。在开发机上运行 `start-course.cmd` 也可访问 <http://127.0.0.1:8765/ch3/index.html>。
 
 - `output/pdf/第三章-风险型决策分析.pdf`：62页，53页主讲与9页附录，按四次90分钟组织。
 - `course-site/dist/ch3/slides.html`：网页演示和逐页讲稿。

@@ -27,7 +27,11 @@ page=page.replace('<div id="frequency" aria-label="每1000个情境的期望频�
 page=page.replace('<div id="bayes-table" class="table-wrap"></div>',frequency_visual+'<div id="bayes-table" class="table-wrap"></div>'+value_visual)
 page=page.replace('u(x)=[1−exp(−kz)]/[1−exp(−k)]；k=0取u=z','k≠0 时，u(x)=[1−exp(−kz)]/[1−exp(−k)]；k=0 时另取 u=z')
 page=page.replace('<p class="notice">核对说明：','<p class="notice">章末习题提醒：第6题中，p=.02 时赌局与确定0无差异，p=.03 时却选择确定0，两条回答不满足同一递增期望效用模型，应报告冲突并复测，不能强行拟合。第7题缺少状态概率，需补充有依据的概率，或保留概率参数比较，不能直接给出唯一 EU 最优方案。</p><p class="notice">核对说明：')
-page=page.replace('href="../assets/ch3.css"','href="../assets/ch3.css?v=20261123-1"').replace('src="../assets/ch3.js"','src="../assets/ch3.js?v=20261123-1"')
+page=page.replace('先预测：大店的期望值 7.2 万元','先预测：默认参数下，大店的期望值 7.2 万元')
+page=page.replace('<p id="tree-stage"','<p id="tree-error" class="error" role="alert"></p><p id="tree-stage"')
+page=page.replace('<div class="lab-grid"><div id="utility-chart"','<p id="utility-error" class="error" role="alert"></p><div class="lab-grid"><div id="utility-chart"')
+page=page.replace('<a href="../index.html">课程地图 →</a></div></main>','<a href="../ch4/index.html">第四章 →</a></div></main>')
+page=page.replace('href="../assets/ch3.css"','href="../assets/ch3.css?v=20261123-2"').replace('src="../assets/ch3.js"','src="../assets/ch3.js?v=20261123-2"')
 (out/'index.html').write_text(page,encoding='utf-8')
 for name,target in [('第三章-学生任务单.md','chapter-03-task.md'),('第三章-教师使用指南.md','chapter-03-teacher.md'),('第三章-知识点覆盖与核对.md','chapter-03-coverage.md')]:
     shutil.copyfile(r/'docs'/name,r/'course-site/dist/downloads'/target)
