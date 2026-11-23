@@ -16,10 +16,50 @@ function plot(id,series,xlabel,ylabel,marker){
  if(marker!==undefined&&marker>=xmin&&marker<=xmax)s+=`<line x1="${X(marker)}" x2="${X(marker)}" y1="65" y2="285" stroke="#8697a9" stroke-dasharray="5 5"/>`;
  $(id).innerHTML=s+'</svg>';
 }
-let model=null,latest={},step=0;
+let model=null,latest={},step=0,selectedReport=0;
+function naturalFrequency(r){
+ const report=r.reports[selectedReport],reportName=selectedReport?'差报告':'好报告';
+ const groups=r.reports.flatMap((x,i)=>x.joint.map((p,j)=>({report:i,state:j,count:1000*p})));
+ let svg='<svg viewBox="0 0 600 240" role="img" aria-label="'+esc(`每1000个情境的期望频数，非观测样本。当前突出${reportName}：高客流${fmt(report.joint[0]*1000,4)}，低客流${fmt(report.joint[1]*1000,4)}，合计${fmt(report.mass*1000,4)}。`)+'"><title>1000格自然频数图：每格代表1个情境的期望频数，可分割显示小数</title>';
+ let start=0;
+ for(const g of groups){
+  const end=start+g.count,fill=g.state?'#bb8637':'#244e79';
+  for(let cell=Math.floor(start);cell<Math.min(1000,Math.ceil(end-1e-9));cell++){
+   const lo=Math.max(cell,start),hi=Math.min(cell+1,end);if(hi<=lo)continue;
+   svg+=`<rect x="${cell%50*12+(lo-cell)*10}" y="${Math.floor(cell/50)*12}" width="${(hi-lo)*10}" height="10" fill="${fill}" opacity="${g.report===selectedReport?1:.16}"/>`;
+  }
+  start=end;
+ }
+ svg+='</svg>';
+ const cells=groups.map(g=>`<div class="frequency-count ${g.report===selectedReport?'is-selected':''}" data-expected-count="${g.count}" data-report="${g.report}" data-state="${g.state}"><span><i class="state-key ${g.state?'low':'high'}" aria-hidden="true"></i>${g.state?'低':'高'}客流 · ${g.report?'差':'好'}报告</span><strong>${fmt(g.count,4)}</strong></div>`).join('');
+ const posterior=report.posterior?`${fmt(report.joint[0]*1000,4)} ÷ ${fmt(report.mass*1000,4)} = ${fmt(report.posterior[0]*100,2)}%`:'0 ÷ 0：未定义';
+ $('frequency').innerHTML=`<p class="frequency-prior">1000 个情境：高客流 <strong>${fmt(model.p[0]*1000,4)}</strong>，低客流 <strong>${fmt(model.p[1]*1000,4)}</strong>。每格为 1 个期望频数，小数用部分色格表示。</p><div class="frequency-grid">${svg}</div><div class="frequency-counts">${cells}</div><div class="posterior-reading" aria-live="polite"><span>${reportName}中，高客流占多少？</span><strong id="frequency-posterior" data-posterior="${report.posterior?report.posterior[0]:''}">${posterior}</strong><p>${report.posterior?`分母只数${reportName}的 ${fmt(report.mass*1000,4)} 个情境，不再是全部 1000 个。`:`P(${reportName})=0，此报告不会出现；后验不定义，对调查事前毛值的贡献为 0。`}</p></div>`;
+ ['frequency-good','frequency-bad'].forEach((id,i)=>$(id).setAttribute('aria-pressed',String(i===selectedReport)));
+}
+function informationValue(r){
+ const baseline=r.prior.best.value,perfect=r.prior.perfect,zero=x=>Math.abs(x)<1e-9?0:x;
+ const lo=Math.min(0,zero(r.net)),rawHi=Math.max(0,baseline,r.gross,perfect),hi=rawHi===lo?lo+1:rawHi;
+ const X=x=>(x-lo)/(hi-lo)*100,unit=x=>fmt(zero(x),4)+' 万元';
+ const segment=(from,to,cls)=>`<span class="value-segment ${cls}" style="left:${X(Math.min(from,to))}%;width:${Math.abs(to-from)/(hi-lo)*100}%"></span>`;
+ const rows=[
+  ['baseline','无调查最佳 EMV',baseline,segment(0,baseline,'base'),`现在直接选：${names(r.prior.best.indices)}`],
+  ['gross','调查后毛值',r.gross,segment(0,baseline,'base')+segment(baseline,r.gross,'sample'),`无调查最佳 EMV + EVSI = ${unit(baseline)} + ${unit(r.evsi)}`],
+  ['net','调查后净值',r.net,segment(0,zero(r.net),r.net<0?'negative':'net'),`调查后毛值 − 调查费 = ${unit(r.gross)} − ${unit(r.cost)}`],
+  ['perfect','完全信息下最佳值',perfect,segment(0,baseline,'base')+segment(baseline,perfect,'perfect'),`无调查最佳 EMV + EVPI = ${unit(baseline)} + ${unit(r.prior.evpi)}`]
+ ];
+ $('info-value').innerHTML='<p class="value-unit">共用金额轴 / 万元；虚线表示 0。蓝色为无调查基准，金色为 EVSI，绿色为 EVPI。</p>'+rows.map(([key,label,v,bar,detail])=>`<div class="value-row" data-value-kind="${key}" data-value="${zero(v)}"><div class="value-label"><span>${label}</span><strong>${unit(v)}</strong></div><div class="value-track" aria-hidden="true">${bar}<i class="value-zero" style="left:${X(0)}%"></i></div><p>${esc(detail)}</p></div>`).join('')+`<div class="value-axis" aria-hidden="true"><span>${fmt(lo,4)}</span><span>${fmt(hi,4)} 万元</span></div><div class="value-conclusion" aria-live="polite"><strong>净改善 = EVSI − 调查费 = ${unit(r.evsi)} − ${unit(r.cost)} = ${unit(r.increment)}</strong><p>${r.prior.evpi<1e-9?'EVPI = 0：即使完全知道状态，也不能提高最优期望值；此时 EVSI 也为 0。':r.evsi<1e-9?'EVSI = 0：这项调查没有提高最优期望值，但完全信息仍可能有价值。':'EVSI 是这项调查带来的毛增量；EVPI 是完全信息的毛增量上限。'}${Math.abs(r.increment)<1e-9?' 净改善为 0，调查与不调查并列。':r.increment<0?' 净改善为负，应选择不调查。':' 净改善为正，按期望货币准则值得调查。'}</p></div>`;
+}
 function cafeInput(){const p=value('prior');return {p:[p,1-p],a:[[0,0],[value('small-high'),value('small-low')],[value('large-high'),value('large-low')]]};}
 function expectation(){model=cafeInput();const {a,p}=model,r=M.evaluate(a,p),sim=M.simulate(a,p,value('runs'),value('seed'));latest.expectation={...model,...r,simulation:sim};$('prior-out').textContent=fmt(p[0]*100)+'%';metrics('ev-metrics',[['期望最优',names(r.best.indices)],['最优 EMV',fmt(r.best.value)+' 万'],['EVPI',fmt(r.evpi)+' 万']]);table('ev-table',['方案','EMV / 万元','SD / 万元','亏损概率','EOL / 万元','模拟均值'],a.map((_,i)=>[M.names[i],fmt(r.ev[i]),fmt(r.sd[i]),fmt(r.loss[i]*100)+'%',fmt(r.eol[i]),fmt(sim.means[i])]));plot('ev-chart',sim.paths.map((points,i)=>({name:M.names[i],points})),'独立抽样次数','累计样本均值 / 万元');$('ev-comment').textContent=`实际抽得高客流 ${sim.counts[0]} 次、低客流 ${sim.counts[1]} 次。理论期望不随种子改变；样本均值可能来回波动。`;}
-function bayes(){if(!model)throw Error('请先修正期望实验中的输入');const s=value('sensitivity'),t=value('specificity'),cost=value('survey-cost'),r=M.bayes(model.a,model.p,[[s,1-t],[1-s,t]],cost);latest.bayes={sensitivity:s,specificity:t,...r};$('sensitivity-out').textContent=fmt(s*100)+'%';$('specificity-out').textContent=fmt(t*100)+'%';metrics('bayes-metrics',[['无调查最优值',fmt(r.prior.best.value)+' 万'],['有调查毛价值',fmt(r.gross)+' 万'],['EVSI / EVPI',fmt(r.evsi)+' / '+fmt(r.prior.evpi)],['调查净改善',fmt(r.increment)+' 万']]);$('bayes-comment').textContent=`调查后净价值 ${fmt(r.net)} 万元。`+(r.increment>1e-9?'按期望货币准则，值得调查。':r.increment< -1e-9?'费用超过信息毛价值，选择不调查。':'调查与不调查并列。')+' 同一模型应满足 0 ≤ EVSI ≤ EVPI。';table('bayes-table',['报告','报告概率','后验 P(高)','后验 P(低)','最优行动','条件最优值 / 万'],r.reports.map((x,i)=>[i===0?'好报告':'差报告',fmt(x.mass,5),x.posterior?fmt(x.posterior[0],6):'未定义',x.posterior?fmt(x.posterior[1],6):'未定义',x.best?names(x.best.indices):'不会出现',x.best?fmt(x.best.value,5):'—']));$('frequency').innerHTML='<strong>每 1000 个情境中的期望频数</strong><p>蓝色：高客流；金色：低客流。整条宽度对应所有情境。</p>'+r.reports.map((x,i)=>`<div class="frequency-row"><span>${i?'差报告':'好报告'}</span><div class="frequency-bar" role="img" aria-label="高客流${fmt(1000*x.joint[0])}、低客流${fmt(1000*x.joint[1])}"><span style="width:${x.joint[0]*100}%"></span><span style="width:${x.joint[1]*100}%"></span></div><small>高 ${fmt(1000*x.joint[0])} / 低 ${fmt(1000*x.joint[1])} / 合计 ${fmt(x.mass*1000)}</small></div>`).join('');}
+function bayes(){
+ if(!model)throw Error('请先修正期望实验中的输入');
+ const s=value('sensitivity'),t=value('specificity'),cost=value('survey-cost'),r=M.bayes(model.a,model.p,[[s,1-t],[1-s,t]],cost);
+ latest.bayes={sensitivity:s,specificity:t,...r};$('sensitivity-out').textContent=fmt(s*100)+'%';$('specificity-out').textContent=fmt(t*100)+'%';
+ metrics('bayes-metrics',[['EVSI · 调查信息毛价值',fmt(r.evsi)+' 万元'],['EVPI · 完全信息上限',fmt(r.prior.evpi)+' 万元'],['调查费',fmt(cost)+' 万元'],['调查净改善',fmt(r.increment)+' 万元']]);
+ $('bayes-comment').textContent=`调查后净价值 ${fmt(r.net)} 万元。`+(r.increment>1e-9?'按期望货币准则，值得调查。':r.increment< -1e-9?'费用超过信息毛价值，选择不调查。':'调查与不调查并列。')+' 同一模型应满足 0 ≤ EVSI ≤ EVPI。';
+ naturalFrequency(r);informationValue(r);
+ table('bayes-table',['报告','报告概率','后验 P(高)','后验 P(低)','最优行动','条件最优值 / 万元'],r.reports.map((x,i)=>[i===0?'好报告':'差报告',fmt(x.mass,5),x.posterior?fmt(x.posterior[0],6):'未定义',x.posterior?fmt(x.posterior[1],6):'未定义',x.best?names(x.best.indices):'不会出现',x.best?fmt(x.best.value,5):'—']));
+}
 function sensitivity(){if(!model)return;plot('sensitivity-chart',model.a.map((r,i)=>({name:M.names[i],points:Array.from({length:101},(_,j)=>[j/100,r[0]*j/100+r[1]*(1-j/100)])})),'高客流概率 p','EMV / 万元',model.p[0]);const intervals=M.sensitivity(model.a),merged=[];for(const item of intervals){const prev=merged.at(-1);if(prev&&String(prev.best)===String(item.best))prev.hi=item.hi;else merged.push({...item});}latest.sensitivity=merged;table('sensitivity-table',['概率开区间','最优方案','右端点最优方案'],merged.map(x=>[`${fmt(x.lo,6)} < p < ${fmt(x.hi,6)}`,names(x.best),names(M.evaluate(model.a,[x.hi,1-x.hi]).best.indices)]));$('sensitivity-comment').textContent='当前 p='+fmt(model.p[0],4)+'，最优：'+names(M.evaluate(model.a,model.p).best.indices)+'。p=0 时：'+names(M.evaluate(model.a,[0,1]).best.indices)+'；p=1 时：'+names(M.evaluate(model.a,[1,0]).best.indices)+'。开区间与端点并列情况分别显示。';}
 function tree(){const cost=value('expand-cost'),r=M.tree(cost);latest.tree={cost,...r};$('expand-cost-out').textContent=fmt(cost);$('tree-stage').textContent=['0 / 3：先预测后7年的条件价值。','1 / 3：圆圈按条件概率加权；扩建费已从扩建候选值扣除。','2 / 3：小店前期好时，在扩建与保持中取较大值。','3 / 3：回到现在，加前3年收益、扣初始投资，比较完整策略。'][step];$('tree-next').disabled=step===3;
  const tx=(x,y,t,size=17)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="${size}" fill="#244e79">${esc(t)}</text>`;
@@ -41,13 +81,15 @@ const quiz=[
 ];
 function quizInit(){$('quiz-questions').innerHTML=quiz.map((q,i)=>`<fieldset class="quiz-item"><legend>${i+1}. ${esc(q[0])}</legend>${q[1].map((a,j)=>`<label><input type="radio" name="q${i}" value="${j}" required> ${esc(a)}</label>`).join('')}</fieldset>`).join('');$('quiz-form').addEventListener('submit',e=>{e.preventDefault();let score=0;const rows=quiz.map((q,i)=>{const answer=document.querySelector(`input[name="q${i}"]:checked`);if(!answer)return null;const ok=Number(answer.value)===q[2];if(ok)score++;return `<p>${i+1}. ${ok?'正确':'需修正'}：${esc(q[3])}</p>`;});if(rows.some(x=>x===null)){$('quiz-result').textContent='请完成全部8题后提交。';return;}$('quiz-result').innerHTML=`<strong>${score} / 8</strong>`+rows.join('');});$('quiz-form').addEventListener('reset',()=>{$('quiz-result').textContent='';});}
 function safe(fn,id,clear=[]){try{fn();if(id)$(id).textContent='';return true;}catch(e){if(id)$(id).textContent=e.message;clear.forEach(x=>$(x).innerHTML='');return false;}}
-function shared(){const ok=safe(expectation,'ev-error',['ev-metrics','ev-chart','ev-table','ev-comment']);if(!ok){model=null;['bayes-metrics','bayes-table','frequency','bayes-comment','sensitivity-chart','sensitivity-table','sensitivity-comment'].forEach(x=>$(x).innerHTML='');$('bayes-error').textContent='请先修正“期望与随机结果”中的输入。';return;}safe(bayes,'bayes-error',['bayes-metrics','bayes-table','frequency','bayes-comment']);sensitivity();}
+const bayesClear=['bayes-metrics','bayes-table','frequency','info-value','bayes-comment'];
+function shared(){const ok=safe(expectation,'ev-error',['ev-metrics','ev-chart','ev-table','ev-comment']);if(!ok){model=null;[...bayesClear,'sensitivity-chart','sensitivity-table','sensitivity-comment'].forEach(x=>$(x).innerHTML='');$('bayes-error').textContent='请先修正“期望与随机结果”中的输入。';return;}safe(bayes,'bayes-error',bayesClear);sensitivity();}
 function form(id,fn){$(id).addEventListener('input',fn);$(id).addEventListener('submit',e=>e.preventDefault());$(id).addEventListener('reset',()=>setTimeout(fn,0));}
 function navigate(){let hash=location.hash.slice(1);if(!document.querySelector('.panel#'+CSSescape(hash)))hash='expectation';document.querySelectorAll('.panel').forEach(x=>x.hidden=x.id!==hash);document.querySelectorAll('.side-nav a').forEach(x=>{const yes=x.hash==='#'+hash;x.classList.toggle('active',yes);if(yes)x.setAttribute('aria-current','location');else x.removeAttribute('aria-current');});}
 function CSSescape(s){return /^[a-z][a-z-]*$/.test(s)?s:'no-such-panel';}
 try{
- form('ev-form',shared);form('bayes-form',()=>safe(bayes,'bayes-error',['bayes-metrics','bayes-table','frequency','bayes-comment']));form('tree-form',()=>{step=0;tree();});form('sample-form',()=>safe(sampling,'sample-error',['sample-metrics','sample-chart','sample-table','sample-comment']));form('utility-form',utility);
- $('perfect-info').addEventListener('click',()=>{$('sensitivity').value='1';$('specificity').value='1';safe(bayes,'bayes-error');});$('no-info').addEventListener('click',()=>{$('sensitivity').value='.5';$('specificity').value='.5';safe(bayes,'bayes-error');});
+ form('ev-form',shared);form('bayes-form',()=>safe(bayes,'bayes-error',bayesClear));form('tree-form',()=>{step=0;tree();});form('sample-form',()=>safe(sampling,'sample-error',['sample-metrics','sample-chart','sample-table','sample-comment']));form('utility-form',utility);
+ $('perfect-info').addEventListener('click',()=>{$('sensitivity').value='1';$('specificity').value='1';safe(bayes,'bayes-error',bayesClear);});$('no-info').addEventListener('click',()=>{$('sensitivity').value='.5';$('specificity').value='.5';safe(bayes,'bayes-error',bayesClear);});
+ ['frequency-good','frequency-bad'].forEach((id,i)=>$(id).addEventListener('click',()=>{selectedReport=i;safe(bayes,'bayes-error',bayesClear);}));
  $('tree-next').addEventListener('click',()=>{step=Math.min(3,step+1);tree();});$('tree-hide').addEventListener('click',()=>{step=0;tree();});
  try{$('reflection').value=localStorage.getItem('decision-ch3-reflection')||'';}catch(_){$('note-status').textContent='此环境不能本机保存，可使用导出。';}
  $('save-note').addEventListener('click',()=>{try{localStorage.setItem('decision-ch3-reflection',$('reflection').value);$('note-status').textContent='已保存在本机此浏览器。';}catch(_){$('note-status').textContent='本机保存不可用，请导出记录。';}});
