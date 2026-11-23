@@ -9,3 +9,11 @@
   display: block;
   line-height: 1.4;
 }
+/* The shared narrow-screen rule sizes only by width. In landscape, also
+   reserve room for the toolbar and keyboard hint. Native fullscreen retains
+   the shared 65px allowance; portrait and print layouts remain unchanged. */
+@media screen and (max-width:650px) and (orientation:landscape) {
+  body:not(:fullscreen) #deck {
+    width:min(calc(100vw - 10px),calc((100vh - 117px)*16/9));
+  }
+}
